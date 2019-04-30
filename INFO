@@ -1,0 +1,73 @@
+----------Programas
+
+ag (Agregador de Vendas) ->
+	Recebe por stdin entradas no formato do ficheiro de vendas até EOF. 
+	Produz para stdout os dados agregados de cada artigo (vendas efetuads), contendo o código do artigo, a quantidade total e o montante, mantendo o formato do ficheiro de vendas.
+
+cv (Cliente de Vendas) ->
+	Recebe instruções do stdin.
+	Interage com o SV e não com os ficheiros de texto
+	Pede ao sv a execução de instruções, diferenciadas pelo número de parâmetros:
+		-Pede a quantidade de stock e o preço de um artigo, especificando o código do mesmo
+		-Efetua vendas ou entradas de stock, especificando o código e a quantidade (positiva ou negativa)
+
+	Ex:
+	$ cv
+	<código_numérico>			   --> mostra no stdout stock e preço
+	<código_numérico> <quantidade> --> atualiza stock e mostra novo stock no stdout
+
+
+ma (Manutenção de Artigos) ->
+	Recebe instruções do stdin
+	Permite inserir novos artigos (especificando o nome e preço)
+	Permite alterar os atributos de um artigo (nome ou preço)
+
+	Este programa altera diretamente os ficheiro de texto, sendo que ao alterar o nome é necessário notificar o SV, para este atualizar as informações que possui sobre os nomes (nomeadamente o offset do nome do artigo que foi alterado)
+
+	Ex:
+	$ ma
+	i <nome> <preço>        --> Insere novo artigo, mostra o código
+	n <código> <novo nome>	--> Altera nome do artigo
+	p <código> <novo preço>	--> Altera preço do artigo
+
+
+sv (Servidor de Vendas)->
+	Controla os stocks dos artigos
+	Recebe pedidos dos CV's
+	Regista as vendas efetuadas
+	Permite correr o agregador
+
+	O servidor deve permitir a execução concorrente de vários clientes.
+
+
+----------Ficheiros de Texto
+
+artigos -> 
+	Contém os artigos ordenados pelo seu código (ímplicito, o código é o índice)
+	Cada entrada do ficheiro contém:
+		-Um offset que corresponde á posição do nome do artigo no ficheiro "string" (Isto permite que cada entrada tenha um tamanho fixo)
+		-O preço do artigo
+stocks ->
+	Contém a quantidade em stock de cada artigo
+strings ->
+	Contém Strings com o nome dos artigos
+	Como diz no enunciado, não há problema se o ficheiro conter nomes obsoletos, logo aquando da alteração do nome de um artigo, o antigo não é alterado, apenas é inserido o novo no fim do ficheiro e o offset é alterado no ficheiro "artigos"
+vendas -> 
+	Cada entrada corresponde a uma venda, e contém:
+		-O código do artigo
+		-A quantidade vendida
+		-O montante($) da venda
+
+//Estruturas
+
+É necessário definir uma estrutura para permitir a comunicação entre clientes e o servidor.
+
+	struct action{
+		char* pipename; //quando um cliente é criado, cria também um pipe com o nome igual ao seu pid, deste modo o servidor pode receber todas as intruções por um só pipe, mas envia os resultados apenas para a instância de cliente que a pediu.
+
+		int codigo; // código do artigo
+		int montante; //montate do artigo para as vendas, 0 caso seja instrução de consulta
+	}
+
+
+
