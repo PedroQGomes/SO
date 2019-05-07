@@ -2,7 +2,6 @@
 #define serverPipe "/temp/serverPipe"
 #define PATHARTIGOS "artigos"
 #define PATHTSTRINGS "strings"
-
 #define PATHSTOCKS "stocks"
 #define PATHVENDAS "vendas"
 #define TAM_ARTIGO_STR_WITH_NEWLINE 23
@@ -18,6 +17,14 @@ typedef struct _artigo{
     off_t stringRef;
     int price;
 } Artigo;
+
+
+typedef struct sale {
+    int ID;
+    int qnt;
+    int price;
+} Sale;
+
 
 struct action{
 		pid_t pid; // um pipe com o nome da pid do cliente que o esta a pedir
