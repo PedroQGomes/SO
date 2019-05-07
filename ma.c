@@ -7,45 +7,50 @@
 #include <stdio.h>
 #include "constants.h"
 
+
 int artigosFile,stringsFile;
 
-void insereArtigo(char *name, int price)
+
+
+void insereArtigo(char *name, int _price)
 {
-    char tmpData[TAM_ARTIGO_STR_WITH_NEWLINE] = "";
-    ssize_t stringRef = lseek(stringsFile, 0, SEEK_END);
-    sprintf(tmpData, "%010lu %010d\n", stringRef, price);
-    strcat(name, "\n");
+    ssize_t strRef = lseek(stringsFile, 0, SEEK_END);
+    Artigo artigo;
+    artigo.ID = lseek(artigosFile,0,SEEK_END)/sizeof(artigo);
+    artigo.stringRef = strRef;
+    artigo.price = _price;
     lseek(artigosFile, 0, SEEK_END);
-    write(artigosFile, tmpData, strlen(tmpData));
+    write(artigosFile, &artigo, sizeof(Artigo));
+    strcat(name,"\n");
     write(stringsFile, name, strlen(name));
 }
 
 // FALTA COMUNICAÇAO COM O SERVER
 
 void alteraNomeArtigo(int id, char *name)
-{
+{   
 
-    
-    off_t artOffset = (TAM_ARTIGO_STR * (id - 1));
+    off_t artOffset = (sizeof(Artigo) * (id));
     lseek(artigosFile, artOffset, SEEK_SET);
-    char tmpData[TAM_ARTIGO_STR_WITH_NEWLINE] = "";
-    ssize_t stringRef = lseek(stringsFile, 0, SEEK_END);
-    sprintf(tmpData, "%010lu", stringRef);
-    write(artigosFile, tmpData, strlen(tmpData));
+    ssize_t _stringRef = lseek(stringsFile, 0, SEEK_END);
+    Artigo tmp;
+    read(artigosFile,&tmp,sizeof(Artigo));
+    tmp.stringRef = _stringRef;
+    write(artigosFile, &tmp, sizeof(Artigo));
     write(stringsFile, name, strlen(name));
 }
 
 
 // FALTA COMUNICAÇAO COM O SERVER
 
-void alteraPrecoArtigo(int id, int price)
+void alteraPrecoArtigo(int id, int _price)
 {
-    off_t artOffset = (TAM_ARTIGO_STR * (id - 1));
-    artOffset += 11; // TAMANHO DA STRING + ESPAÇO
+    off_t artOffset = (sizeof(Artigo) * (id));
     lseek(artigosFile, artOffset, SEEK_SET);
-    char tmpData[TAM_ARTIGO_STR_WITH_NEWLINE] = "";
-    sprintf(tmpData, "%010d", price);
-    write(artigosFile, tmpData, strlen(tmpData));
+    Artigo tmp;
+    read(artigosFile,&tmp,sizeof(Artigo));
+    tmp.price = _price;
+    write(artigosFile, &tmp, sizeof(Artigo));
 }
 
 int initFileDescriptors() {
