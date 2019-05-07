@@ -2,5 +2,10 @@
 #define serverPipe "/temp/serverPipe"
 #define PATHARTIGOS "artigos"
 #define PATHTSTRINGS "strings"
-#define TAM_ARTIGO_STR_WITH_NEWLINE 23
-#define TAM_ARTIGO_STR 22
+
+typedef struct _artigo{
+    int ID;
+    off_t stringRef;
+    int price;
+} Artigo;
+
