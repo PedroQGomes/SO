@@ -66,9 +66,13 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
 
 void answerBack(char* pid,Answer ans){
     int fd2;
-    mkfifo(pid,0666);
-    fd2 = open(pid,O_WRONLY);
-    write(fd2,ans,sizeof(struct answer));
+    char buffer[100];
+    sprintf(buffer,"%s%s",PATH,pid);
+    fd2 = open(buffer,O_WRONLY);
+    printf("PID A QUEM ENVIA %s\n",pid);
+    ssize_t res = write(fd2,ans,sizeof(struct answer));
+    printf("TAMANHO A ENVIAR: %zd\n",res);
+    if(res == -1) perror("MENSAGEM");
     close(fd2);
 }
 
@@ -112,9 +116,9 @@ void sv(){
     pid_t res;
 
     server = mkfifo(serverPipe,0666);
-    //if(server < 0){printf("Erro a criar o fifo do servidor\n");}
+    if(server < 0){perror("FIFO");} else printf("Server is open\n");
     while (1){
-        // abrir o fifo
+        // abrir o fifo                     
         fd1 = open(serverPipe,O_RDONLY);
         //if(fd1 < 0){printf("Erro a abrir o fifo do servidor\n");}
         lerdados = read(fd1,dados,sizeof(struct action));
@@ -122,7 +126,6 @@ void sv(){
             sprintf(pid,"%d",dados->pid);
             cod = dados->codigo;
             qnt = dados->quantidade;
-
             if((res = fork()) == 0){ 
                 Answer ans = (Answer) malloc(sizeof(struct answer));
                 if((dados->pid) < 0){
@@ -138,10 +141,10 @@ void sv(){
                 _exit(0);
             }else{ 
                 waitpid(res,&status,WNOHANG);
-                //WIFEXITED(status);
-            }
+                //WIFEXITED(status); 
+            } 
 
-        }
+        } 
         close(fd1);
     }
 }
@@ -149,13 +152,13 @@ void sv(){
 
 int main(){
     int x= 0;
-    atualizaStock(1235,1);
+   // atualizaStock(1235,1);
     //atualizaStock(1235,1);
     //atualizaStock(1236,3);
     //atualizaStock(1235,2);
     //getStock(1235,&x);
-    //printf("resultado %d\n",x);
-    //sv();
+    //printf("resultado\n");
+    sv();
     return 0;
 }
 

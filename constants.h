@@ -11,7 +11,6 @@ typedef struct action* Action;
 typedef struct answer* Answer;
 
 
-
 typedef struct _artigo{
     int ID;
     off_t stringRef;

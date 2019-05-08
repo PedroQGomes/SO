@@ -21,20 +21,19 @@ void filho(){
 int main(int arc, const char* argv[]){
 
 	pid_t pid = getpid();
+	printf("PID: %d\n",pid);
 	char *path = serverPipe;
 	char *fifo = (char *) malloc(strlen(path) * sizeof(char));
 
-	if(fork() != 0){ //código que envia as instruções para o servidor
+	if(fork() != 0){ //código que envia as instruções para o servidor -> PAI
 		int nBytes = 0;
 		int nArgs; //0 se a instrução tiver apenas 1 argumento, 1 se tiver 2
 		char *line = (char *) malloc(50);
 		char *token;
 		pid_t pid = getpid();
-		printf("hello\n");
 		int fd = open(serverPipe, O_WRONLY);
-		Action act = (Action) malloc(sizeof(action));
-		printf("%d\n", fd);
-		if(fd != -1){
+		Action act = (Action) malloc(sizeof(Action));
+		if(fd > 0){
 			while(1){
 				nBytes = read(0, line, sizeof(line));
 
@@ -48,33 +47,34 @@ int main(int arc, const char* argv[]){
 				}else{	
 					act->quantidade = 0;
 				}
-		
-				write(fd, &action, sizeof(action));
-			}
+				printf("PID: %d, codigo: %d, quantidade :%d \n",act->pid, act->codigo,act->quantidade);
+				write(fd, act, sizeof(struct action));
+			} 
 		}
 
+		close(fd);
 
-
-	}else{ //código que recebe os resultados das instruções e o escreve para stdout
-
+	} else{ //código que recebe os resultados das instruções e o escreve para stdout -> FILHO
 		char *clientPipe;
-		sprintf(clientPipe, "/temp/%d", pid);
+		sprintf(clientPipe, "%s%d",PATH, pid);
 
-		mkfifo(clientPipe, 0666);
-		int fd1 =open(clientPipe, O_RDONLY);
-
-		Answer a = (Answer) malloc(sizeof(answer));
+		int teste = mkfifo(clientPipe, 0666);
+		
+		Answer a = (Answer) malloc(sizeof(struct answer));
 
 		while(1){
-			read(fd1, &a, sizeof(answer));
+			int fd1 =open(clientPipe, O_RDONLY);
+			if(fd1 < 0 )break;
+			read(fd1, a, sizeof(struct answer));
 			if(a->preco == 0){
-				printf("O novo stock do produto é: %d", a->stock);
+				printf("O novo stock do produto é: %d\n", a->stock);
 			}else{
-				printf("O preço do produto é: %d", a->preco);
-				printf("O stock do produto é: %d",a->stock);
+				printf("O preço do produto é: %d\n", a->preco);
+				printf("O stock do produto é: %d\n",a->stock);
 			}
+			close(fd1);
 		}
-
+		
 		_exit(0);
 	}
 }
