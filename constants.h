@@ -18,6 +18,11 @@ typedef struct _artigo{
     int price;
 } Artigo;
 
+typedef struct stocks{
+    int numCod;
+    int qnt;
+}Stocks;
+
 
 typedef struct sale {
     int ID;

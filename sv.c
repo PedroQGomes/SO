@@ -10,104 +10,105 @@
 
 void getPreco(int codigo,int *preco){
     int fd1;
-    char buf[10];
     fd1 = open(PATHARTIGOS,O_RDONLY);
-    off_t artOffset = (TAM_ARTIGO_STR * (codigo));
-    artOffset += 11; // TAMANHO DA STRING + ESPAÇO
-    lseek(fd1, artOffset, SEEK_SET);
-    read(fd1,buf,sizeof(buf));
-    *preco = atoi(buf);
+    Artigo atg;
+    while(read(fd1,&atg,sizeof(atg))){
+        if(atg.ID == codigo){
+            *preco = atg.price;
+            break;
+        }
+    }
 }// done
 void getStock(int codigo,int *stock){
-    int fd1,i,tmpCod;
+    int fd1;
+    Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDONLY);
-    char buf[34];
-    char *tmp;
-    char *arr[2];
-        while(read(fd1,buf,sizeof(buf))){
-            tmp = strtok(buf," ");
-            for(i = 0;tmp;i++){
-                arr[i] = strdup(tmp);
-                tmp = strtok(NULL, " ");
-            }
-            tmpCod = atoi(arr[0]);
-            if( tmpCod == codigo){
-                *stock = atoi(arr[1]);
-            }
-        } 
+    while (read(fd1,&stk,sizeof(stk))){
+        if(stk.numCod == codigo){
+            *stock = stk.qnt;
+            break;
+        }
+    }
 }  // done
 
-void atualizaStock(int codigo,int quantidade){ // tenho de procurar e se nao ouver add
-    int fd1,lidos,tmpCod;
-    int flag = 0;
-    char add[TAM_ARTIGO_STR_WITH_NEWLINE];
-    char string[TAM_ARTIGO_STR_WITH_NEWLINE];
-    char tmpQnt[12];
-    char* token;
-    char* fildes[2];
+void atualizaStock(int codigo,int quantidade){ // nao está a atualizar como devia, so está a dar add
+    int fd1,flag = 0;
+    Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDWR);
-    while(read(fd1,string,strlen(string))){
-        token = strtok(string," ");
-        for(int i = 0;token;i++){
-            fildes[i] = strdup(token);
-            token = strtok(NULL, " ");
-        }
-        tmpCod = atoi(fildes[0]);
-        if(tmpCod == codigo){
-            //lseek();
-            sprintf(tmpQnt, "%010d\n",quantidade);
-            write(fd1,tmpQnt,strlen(tmpQnt));
+    lseek(fd1,0,SEEK_SET);
+    while(read(fd1,&stk,sizeof(Stocks))){
+        if((stk.numCod) == codigo){
+            //lseek(fd1,-(2*(sizeof(stk))),SEEK_CUR);
+            stk.qnt = quantidade;
+            write(fd1,&stk,sizeof(stk));
             flag = 1;
         }
     }
-    if(flag == 0){ 
+    if(flag == 0){
         lseek(fd1,0,SEEK_END);
-        sprintf(add, "%010d %010d\n",codigo, quantidade);
-        write(fd1,add,strlen(add));
+        stk.numCod = codigo;
+        stk.qnt = quantidade;
+        write(fd1,&stk,sizeof(stk));
     }
 }
 
 void atualizaVenda(int codigo,int quantidade){ // done mas por testar
-    int preco,fd1,montante;
-    char string[34];
+    int preco,fd1;
     getPreco(codigo,&preco);
-    montante = quantidade * preco;
+    Sale venda;
+    venda.price = quantidade * preco;
+    venda.ID = codigo;
+    venda.qnt = quantidade;
     fd1 = open(PATHVENDAS,O_WRONLY);
     lseek(fd1,0,SEEK_END);
-    sprintf(string, "%010d %010d %010d\n",codigo,quantidade,montante);
-    write(fd1,string,strlen(string));
+    write(fd1,&venda,sizeof(venda));
 }
 
-void lookStock(int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
+void answerBack(char* pid,Answer ans){
+    int fd2;
+    mkfifo(pid,0666);
+    fd2 = open(pid,O_WRONLY);
+    write(fd2,ans,sizeof(struct answer));
+    close(fd2);
+}
+
+void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
     int tmpStock,tmpPrice;
     getStock(cod,&tmpStock);
     getPreco(cod,&tmpPrice);
     ans->stock = tmpStock;
     ans->preco = tmpPrice;
+    answerBack(pid,ans);
 }
 
-void entryStock(int cod, int qnt,Answer ans){
+void entryStock(char* pid,int cod, int qnt,Answer ans){
     int tmpStock;
     atualizaStock(cod,qnt);
     getStock(cod,&tmpStock);
     ans->preco = 0;
-    ans->stock = tmpStock; 
+    ans->stock = tmpStock;
+    answerBack(pid,ans);
 }
 
-void entrySale(int cod,int qnt,Answer ans){
+void entrySale(char* pid,int cod,int qnt,Answer ans){
     int tmpStock;
     atualizaVenda(cod,qnt);
     atualizaStock(cod,qnt);
     getStock(cod,&tmpStock);
     ans->preco = 0;
-    ans->stock = tmpStock; 
+    ans->stock = tmpStock;
+    answerBack(pid,ans); 
 }
 
+void updateCache(int codigo,int quantidade){
+
+}
 
 void sv(){
-    int server,lerdados,fd1,fd2,cod,qnt,status;
+    int server,lerdados,fd1,cod,qnt,status;
     Action dados = (Action) malloc(sizeof(struct action));
     char pid[10];
+    Artigo cache[10];
     pid_t res;
 
     server = mkfifo(serverPipe,0666);
@@ -122,20 +123,18 @@ void sv(){
             cod = dados->codigo;
             qnt = dados->quantidade;
 
-            if((res = fork()) == 0){ // falta ver a cena do zé
+            if((res = fork()) == 0){ 
                 Answer ans = (Answer) malloc(sizeof(struct answer));
-                if(qnt == 0){ // consulta
-                    lookStock(qnt,ans);
-                }else if(qnt > 0){ // acrescentar ao stock
-                    entryStock(cod,qnt,ans);
-                }else if( qnt < 0){ // venda
-                    entrySale(cod,qnt,ans);
+                if((dados->pid) < 0){
+                    updateCache(cod,qnt);
                 }
-
-                mkfifo(pid,0666);
-                fd2 = open(pid,O_WRONLY);
-                write(fd2,ans,sizeof(struct answer));
-                close(fd2);
+                else if(qnt == 0){ // consulta
+                    lookStock(pid,qnt,ans);
+                }else if(qnt > 0){ // acrescentar ao stock
+                    entryStock(pid,cod,qnt,ans);
+                }else if( qnt < 0){ // venda
+                    entrySale(pid,cod,qnt,ans);
+                }
                 _exit(0);
             }else{ 
                 waitpid(res,&status,WNOHANG);
@@ -149,6 +148,13 @@ void sv(){
 
 
 int main(){
+    int x= 0;
+    atualizaStock(1235,1);
+    //atualizaStock(1235,1);
+    //atualizaStock(1236,3);
+    //atualizaStock(1235,2);
+    //getStock(1235,&x);
+    //printf("resultado %d\n",x);
     //sv();
     return 0;
 }
