@@ -1,5 +1,5 @@
-#define path "/temp/"
-#define serverPipe "/temp/serverPipe"
+#define path "/tmp/"
+#define serverPipe "/tmp/serverPipe"
 #define PATHARTIGOS "artigos"
 #define PATHTSTRINGS "strings"
 #define PATHSTOCKS "stocks"
