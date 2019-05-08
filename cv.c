@@ -8,39 +8,49 @@
 #include "constants.h"
 #include <sys/stat.h>
 
+
+void pai(){
+
+}
+
+void filho(){
+
+}
+
+
 int main(int arc, const char* argv[]){
 
 	pid_t pid = getpid();
 	char *path = serverPipe;
 	char *fifo = (char *) malloc(strlen(path) * sizeof(char));
 
-	if(fork() == 0){ //código que envia as instruções para o servidor
+	if(fork() != 0){ //código que envia as instruções para o servidor
 		int nBytes = 0;
 		int nArgs; //0 se a instrução tiver apenas 1 argumento, 1 se tiver 2
 		char *line = (char *) malloc(50);
 		char *token;
 		pid_t pid = getpid();
-		while(1){
-			nBytes = read(0, line, sizeof(line));
-			nArgs = 0;
-			for(int i = 0; i < strlen(line); i++){
-				if(line[i] == ' ')nArgs = 1;
-			}
-			token = strtok(line," ");
+		printf("hello\n");
+		int fd = open(serverPipe, O_WRONLY);
+		Action act = (Action) malloc(sizeof(action));
+		printf("%d\n", fd);
+		if(fd != -1){
+			while(1){
+				nBytes = read(0, line, sizeof(line));
 
-			Action act = (Action) malloc(sizeof(action));
+				token = strtok(line," ");
 
-			act->pid = pid;
-			act->codigo = atoi(token);
-			token = strtok(NULL," ");
-			if(token != NULL){
-				act->quantidade = atoi(token);
-			}else{	
-				act->quantidade = 0;
+				act->pid = pid;
+				act->codigo = atoi(token);
+				token = strtok(NULL," ");
+				if(token != NULL){
+					act->quantidade = atoi(token);
+				}else{	
+					act->quantidade = 0;
+				}
+		
+				write(fd, &action, sizeof(action));
 			}
-			
-			int fd = open(serverPipe, O_WRONLY);
-			write(fd, &action,sizeof(action));
 		}
 
 
@@ -65,7 +75,6 @@ int main(int arc, const char* argv[]){
 			}
 		}
 
-
+		_exit(0);
 	}
-
 }
