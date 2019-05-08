@@ -8,28 +8,41 @@
 #include <string.h>
 #include "constants.h"
 
-void getPreco(int codigo,int *preco){
+
+Artigo* getArtigo(int codigo,int *preco){
     int fd1;
     fd1 = open(PATHARTIGOS,O_RDONLY);
-    Artigo atg;
-    while(read(fd1,&atg,sizeof(atg))){
-        if(atg.ID == codigo){
-            *preco = atg.price;
-            break;
-        }
-    }
+    if(fd1 <= 0 ) perror("ERRO AO ABRIR ARTIGOS");
+    Artigo *atg = malloc(sizeof(Artigo));
+    lseek(fd1,codigo * sizeof(Artigo),SEEK_SET);
+    if(read(fd1,atg,sizeof(Artigo)) > 0) {
+        *preco = atg->price;
+        return atg;
+    }   
+    return NULL;
 }// done
+
+void getStock2(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
+    int fd1;
+    Stocks stk;
+    fd1 = open(PATHSTOCKS,O_RDONLY);
+    lseek(fd1,codigo*sizeof(Stocks),SEEK_CUR);
+    if (read(fd1,&stk,sizeof(Stocks)) > 0 ) {
+        *stock = stk.qnt;
+    } else *stock = 0;
+}  // done 
+
 void getStock(int codigo,int *stock){
     int fd1;
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDONLY);
-    while (read(fd1,&stk,sizeof(stk))){
+    while (read(fd1,&stk,sizeof(Stocks))){
         if(stk.numCod == codigo){
             *stock = stk.qnt;
             break;
         }
     }
-}  // done
+}  // done 
 
 void atualizaStock(int codigo,int quantidade){ // nao está a atualizar como devia, so está a dar add
     int fd1,flag = 0;
@@ -52,16 +65,34 @@ void atualizaStock(int codigo,int quantidade){ // nao está a atualizar como dev
     }
 }
 
+
+int atualizaStock2(int codigo, int quantidade) { // retorna o stock resultante
+    int fd1;
+    Stocks stk;
+    fd1 = open(PATHSTOCKS,O_RDWR);
+    if(fd1 <= 0) perror("A Atualizar o stock");
+    lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
+    if(read(fd1,&stk,sizeof(Stocks)) > 0) {
+        stk.qnt += quantidade;
+    } else {
+        stk.numCod = codigo;
+        stk.qnt = quantidade;
+        write(fd1,&stk,sizeof(stk));    
+    }
+    close(fd1);
+    return stk.qnt;
+}
+
 void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     int preco,fd1;
-    getPreco(codigo,&preco);
+    getArtigo(codigo,&preco);
     Sale venda;
     venda.price = quantidade * preco;
     venda.ID = codigo;
     venda.qnt = quantidade;
     fd1 = open(PATHVENDAS,O_WRONLY);
     lseek(fd1,0,SEEK_END);
-    write(fd1,&venda,sizeof(venda));
+    write(fd1,&venda,sizeof(Sale));
 }
 
 void answerBack(char* pid,Answer ans){
@@ -78,17 +109,17 @@ void answerBack(char* pid,Answer ans){
 
 void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
     int tmpStock,tmpPrice;
-    getStock(cod,&tmpStock);
-    getPreco(cod,&tmpPrice);
+    getStock2(cod,&tmpStock);
+    getArtigo(cod,&tmpPrice);
     ans->stock = tmpStock;
+    printf("STOCK TMP:%d\n",tmpStock);
     ans->preco = tmpPrice;
     answerBack(pid,ans);
 }
 
 void entryStock(char* pid,int cod, int qnt,Answer ans){
     int tmpStock;
-    atualizaStock(cod,qnt);
-    getStock(cod,&tmpStock);
+    tmpStock = atualizaStock2(cod,qnt);
     ans->preco = 0;
     ans->stock = tmpStock;
     answerBack(pid,ans);
@@ -97,8 +128,8 @@ void entryStock(char* pid,int cod, int qnt,Answer ans){
 void entrySale(char* pid,int cod,int qnt,Answer ans){
     int tmpStock;
     atualizaVenda(cod,qnt);
-    atualizaStock(cod,qnt);
-    getStock(cod,&tmpStock);
+    atualizaStock2(cod,qnt);
+    getStock2(cod,&tmpStock);
     ans->preco = 0;
     ans->stock = tmpStock;
     answerBack(pid,ans); 

@@ -36,6 +36,7 @@ void alteraNomeArtigo(int id, char *name)
     Artigo tmp;
     read(artigosFile,&tmp,sizeof(Artigo));
     tmp.stringRef = _stringRef;
+    lseek(artigosFile, artOffset, SEEK_SET);
     write(artigosFile, &tmp, sizeof(Artigo));
     write(stringsFile, name, strlen(name));
 }
@@ -49,13 +50,14 @@ void alteraPrecoArtigo(int id, int _price)
     lseek(artigosFile, artOffset, SEEK_SET);
     Artigo tmp;
     read(artigosFile,&tmp,sizeof(Artigo));
+    lseek(artigosFile, artOffset, SEEK_SET);
     tmp.price = _price;
     write(artigosFile, &tmp, sizeof(Artigo));
 }
 
 int initFileDescriptors() {
-    artigosFile = open(PATHARTIGOS, O_RDWR | O_APPEND);
-    stringsFile = open(PATHTSTRINGS, O_RDWR | O_APPEND);
+    artigosFile = open(PATHARTIGOS, O_RDWR);
+    stringsFile = open(PATHTSTRINGS, O_RDWR);
     if (artigosFile <= 0 || stringsFile <= 0)
     {
         perror("File Not Found");
