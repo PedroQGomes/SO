@@ -37,32 +37,34 @@ void getStock(int codigo,int *stock){
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDONLY);
     while (read(fd1,&stk,sizeof(Stocks))){
+        //printf("estou com o codigo %d\n",stk.numCod);
         if(stk.numCod == codigo){
+            //printf("encontrei o codigo\n");
             *stock = stk.qnt;
             break;
         }
     }
 }  // done 
 
-void atualizaStock(int codigo,int quantidade){ // nao está a atualizar como devia, so está a dar add
+int atualizaStock(int codigo,int quantidade){ // nao está a atualizar como devia, so está a dar add
     int fd1,flag = 0;
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDWR);
     lseek(fd1,0,SEEK_SET);
     while(read(fd1,&stk,sizeof(Stocks))){
         if((stk.numCod) == codigo){
-            //lseek(fd1,-(2*(sizeof(stk))),SEEK_CUR);
-            stk.qnt = quantidade;
+            lseek(fd1,-((sizeof(stk))),SEEK_CUR);
+            stk.qnt = (stk.qnt) + quantidade;
+            if((stk.qnt) < 0){stk.qnt = 0;}
             write(fd1,&stk,sizeof(stk));
-            flag = 1;
+            return (stk.qnt);
         }
     }
-    if(flag == 0){
-        lseek(fd1,0,SEEK_END);
-        stk.numCod = codigo;
-        stk.qnt = quantidade;
-        write(fd1,&stk,sizeof(stk));
-    }
+    lseek(fd1,0,SEEK_END);
+    stk.numCod = codigo;
+    stk.qnt = quantidade;
+    write(fd1,&stk,sizeof(stk));
+    
 }
 
 
@@ -109,7 +111,7 @@ void answerBack(char* pid,Answer ans){
 
 void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
     int tmpStock,tmpPrice;
-    getStock2(cod,&tmpStock);
+    getStock(cod,&tmpStock);
     getArtigo(cod,&tmpPrice);
     ans->stock = tmpStock;
     printf("STOCK TMP:%d\n",tmpStock);
@@ -118,18 +120,17 @@ void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta
 }
 
 void entryStock(char* pid,int cod, int qnt,Answer ans){
-    int tmpStock;
-    tmpStock = atualizaStock2(cod,qnt);
+    int finalStock; 
+    finalStock = atualizaStock(cod,qnt);
     ans->preco = 0;
-    ans->stock = tmpStock;
+    ans->stock = finalStock;
     answerBack(pid,ans);
 }
 
 void entrySale(char* pid,int cod,int qnt,Answer ans){
     int tmpStock;
     atualizaVenda(cod,qnt);
-    atualizaStock2(cod,qnt);
-    getStock2(cod,&tmpStock);
+    tmpStock = atualizaStock(cod,qnt);
     ans->preco = 0;
     ans->stock = tmpStock;
     answerBack(pid,ans); 
@@ -183,13 +184,16 @@ void sv(){
 
 int main(){
     int x= 0;
-   // atualizaStock(1235,1);
-    //atualizaStock(1235,1);
-    //atualizaStock(1236,3);
-    //atualizaStock(1235,2);
-    //getStock(1235,&x);
-    //printf("resultado\n");
-    sv();
+    atualizaStock(1234,3);
+    atualizaStock(1235,1);
+    atualizaStock(1234,7);
+    atualizaStock(1235,(-3));
+
+    getStock(1234,&x);
+    printf("stock de 1234 %d\n",x);
+    getStock(1235,&x);
+    printf("stock de 1235 %d\n",x);
+    //sv();
     return 0;
 }
 
