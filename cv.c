@@ -18,7 +18,7 @@ void filho(){
 }
 
 
-int main(int arc, const char* argv[]){
+int main(){
 
 	pid_t pid = getpid();
 	printf("PID: %d\n",pid);
@@ -68,6 +68,8 @@ int main(int arc, const char* argv[]){
 			read(fd1, a, sizeof(struct answer));
 			if(a->preco == 0){
 				printf("O novo stock do produto é: %d\n", a->stock);
+			}else if(a->preco == -1){
+				printf("Não existe artigo referente ao código enviado");
 			}else{
 				printf("O preço do produto é: %d\n", a->preco);
 				printf("O stock do produto é: %d\n",a->stock);
@@ -77,4 +79,5 @@ int main(int arc, const char* argv[]){
 		
 		_exit(0);
 	}
+	return 0;
 }

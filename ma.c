@@ -11,6 +11,15 @@
 int artigosFile,stringsFile;
 
 
+void compactStrings() {
+    int newStringsFile = open("tmpStrings",O_CREAT | O_WRONLY,0666);
+    Artigo tmp = {0,0,0};
+    lseek(artigosFile,0,SEEK_SET);
+    while(read(artigosFile,&tmp,sizeof(Artigo)) > 0) {
+        
+    }
+
+}
 
 void insereArtigo(char *name, int _price)
 {

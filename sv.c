@@ -90,6 +90,7 @@ int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
         stk.numCod = codigo;
         stk.qnt = quantidade;
     }
+    if(stk.qnt < 0 ) stk.qnt = 0;
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     write(fd1,&stk,sizeof(stk));    
     close(fd1);
@@ -97,6 +98,7 @@ int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
 }
 
 void atualizaVenda(int codigo,int quantidade){ // done mas por testar
+    if(quantidade == 0) return;
     int preco,fd1;
     manageArtigo(codigo,&preco);
     Sale venda;
@@ -106,6 +108,7 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     fd1 = open(PATHVENDAS,O_WRONLY);
     lseek(fd1,0,SEEK_END);
     write(fd1,&venda,sizeof(Sale));
+    close(fd1);
 }
 
 void answerBack(char* pid,Answer ans){
@@ -139,8 +142,14 @@ void entryStock(char* pid,int cod, int qnt,Answer ans){
 }
 
 void entrySale(char* pid,int cod,int qnt,Answer ans){
-    int tmpStock;
-    atualizaVenda(cod,qnt);
+    int tmpStock = 0, res = 0;
+    getStock(cod,&tmpStock);
+    res = tmpStock - abs(qnt);
+    if((res) >= 0) {
+        atualizaVenda(cod,qnt);
+    } else {
+        atualizaVenda(cod,tmpStock);
+    }
     tmpStock = atualizaStock(cod,qnt);
     ans->preco = 0;
     ans->stock = tmpStock;
