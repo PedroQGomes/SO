@@ -14,11 +14,7 @@ typedef struct _agregState {
     //VendaAgreg vendaAgreg[1000];
 } AgregState;
 
-typedef struct _agregStruct {
-    int id;
-    int qnt;
-    int total;
-} AgregStruct;
+
 
 char* getTimeStamp() {
     struct tm *timeStampStruct;
@@ -31,23 +27,24 @@ char* getTimeStamp() {
 }
 
 int createFileWithTimeStamp() {
-    return open(getTimeStamp(),O_CREAT | O_RDWR);
+    return open(getTimeStamp(),O_CREAT | O_RDWR,0666);
 }
 
 
 int main(int argc, char**argv) {
+    pid_t pid = getpid();
     int fileWithTimeStamp = createFileWithTimeStamp();
     if(fileWithTimeStamp <= 0) return 1;
     Sale sale;
-    while (read(0,&sale,sizeof(Sale))>0) {
+    int fd = open(PATHVENDAS,O_RDONLY);
+    while (read(fd,&sale,sizeof(Sale))>0) {
        AgregStruct tmp;
-       lseek(fileWithTimeStamp,sizeof(sale)*sale.ID,SEEK_SET);
-       if(read(fileWithTimeStamp,&tmp,sizeof(AgregStruct))>0) {
-           /*if(tmp.total > 0 ){
-           } */
-           tmp.qnt += sale.qnt;
-           tmp.total += (sale.qnt * sale.price);
-       }
+       lseek(fileWithTimeStamp,sizeof(AgregStruct)*sale.ID,SEEK_SET);
+       read(fileWithTimeStamp,&tmp,sizeof(AgregStruct));
+       tmp.ID = sale.ID;
+       tmp.qnt += sale.qnt;
+       tmp.total += (sale.qnt * sale.price);
+       lseek(fileWithTimeStamp,sizeof(AgregStruct)*sale.ID,SEEK_SET);
        write(fileWithTimeStamp,&tmp,sizeof(AgregStruct));
     } 
     return 0;

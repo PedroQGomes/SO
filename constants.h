@@ -10,6 +10,11 @@
 typedef struct action* Action;
 typedef struct answer* Answer;
 
+typedef struct _agregStruct {
+    int ID;
+    int qnt;
+    int total;
+} AgregStruct;
 
 typedef struct _artigo{
     int ID;

@@ -22,53 +22,20 @@ Artigo* getArtigo(int codigo,int *preco){
     return NULL;
 }// done
 
-void getStock2(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
+void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     int fd1;
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDONLY);
-    lseek(fd1,codigo*sizeof(Stocks),SEEK_CUR);
-    if (read(fd1,&stk,sizeof(Stocks)) > 0 ) {
+    lseek(fd1,codigo*sizeof(Stocks),SEEK_SET);
+    if (read(fd1,&stk,sizeof(Stocks)) > 0 && stk.qnt > 0) {
         *stock = stk.qnt;
     } else *stock = 0;
 }  // done 
 
-void getStock(int codigo,int *stock){
-    int fd1;
-    Stocks stk;
-    fd1 = open(PATHSTOCKS,O_RDONLY);
-    while (read(fd1,&stk,sizeof(Stocks))){
-        //printf("estou com o codigo %d\n",stk.numCod);
-        if(stk.numCod == codigo){
-            //printf("encontrei o codigo\n");
-            *stock = stk.qnt;
-            break;
-        }
-    }
-}  // done 
-
-int atualizaStock(int codigo,int quantidade){ // nao está a atualizar como devia, so está a dar add
-    int fd1,flag = 0;
-    Stocks stk;
-    fd1 = open(PATHSTOCKS,O_RDWR);
-    lseek(fd1,0,SEEK_SET);
-    while(read(fd1,&stk,sizeof(Stocks))){
-        if((stk.numCod) == codigo){
-            lseek(fd1,-((sizeof(stk))),SEEK_CUR);
-            stk.qnt = (stk.qnt) + quantidade;
-            if((stk.qnt) < 0){stk.qnt = 0;}
-            write(fd1,&stk,sizeof(stk));
-            return (stk.qnt);
-        }
-    }
-    lseek(fd1,0,SEEK_END);
-    stk.numCod = codigo;
-    stk.qnt = quantidade;
-    write(fd1,&stk,sizeof(stk));
-    
-}
 
 
-int atualizaStock2(int codigo, int quantidade) { // retorna o stock resultante
+
+int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     int fd1;
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDWR);
@@ -79,8 +46,9 @@ int atualizaStock2(int codigo, int quantidade) { // retorna o stock resultante
     } else {
         stk.numCod = codigo;
         stk.qnt = quantidade;
-        write(fd1,&stk,sizeof(stk));    
     }
+    lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
+    write(fd1,&stk,sizeof(stk));    
     close(fd1);
     return stk.qnt;
 }
@@ -89,9 +57,9 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     int preco,fd1;
     getArtigo(codigo,&preco);
     Sale venda;
-    venda.price = quantidade * preco;
+    venda.price = abs(quantidade) * preco;
     venda.ID = codigo;
-    venda.qnt = quantidade;
+    venda.qnt = abs(quantidade);
     fd1 = open(PATHVENDAS,O_WRONLY);
     lseek(fd1,0,SEEK_END);
     write(fd1,&venda,sizeof(Sale));
@@ -110,11 +78,11 @@ void answerBack(char* pid,Answer ans){
 }
 
 void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
-    int tmpStock,tmpPrice;
+    int tmpStock = 0,tmpPrice = 0;
     getStock(cod,&tmpStock);
     getArtigo(cod,&tmpPrice);
     ans->stock = tmpStock;
-    printf("STOCK TMP:%d\n",tmpStock);
+    printf("Codigo: %d , STOCK TMP:%d\n",cod,tmpStock);
     ans->preco = tmpPrice;
     answerBack(pid,ans);
 }
@@ -164,7 +132,7 @@ void sv(){
                     updateCache(cod,qnt);
                 }
                 else if(qnt == 0){ // consulta
-                    lookStock(pid,qnt,ans);
+                    lookStock(pid,cod,ans);
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
                 }else if( qnt < 0){ // venda
@@ -184,16 +152,16 @@ void sv(){
 
 int main(){
     int x= 0;
-    atualizaStock(1234,3);
-    atualizaStock(1235,1);
+    //atualizaStock(1234,3);
+/*    atualizaStock(1235,1);
     atualizaStock(1234,7);
     atualizaStock(1235,(-3));
 
     getStock(1234,&x);
     printf("stock de 1234 %d\n",x);
     getStock(1235,&x);
-    printf("stock de 1235 %d\n",x);
-    //sv();
+    printf("stock de 1235 %d\n",x); */
+    sv();
     return 0;
 }
 
