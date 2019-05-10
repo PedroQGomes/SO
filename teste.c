@@ -50,7 +50,7 @@ void testeMA() {
 }
 
 void testeAG() {
-    int fileDescriptor = open("2019-05-10T04:45:28",O_RDONLY);
+    int fileDescriptor = open("1219",O_RDONLY);
     AgregStruct sale;
     while (read(fileDescriptor,&sale,sizeof(AgregStruct)) > 0)
     { 
@@ -86,8 +86,8 @@ int main()
 {
     //testeMA();
     //testeStock();
-    //testeVendas();
-    testeAG();
+    testeVendas();
+    //testeAG();
     return 0;
     
 }
