@@ -3,6 +3,7 @@
 #define PATHARTIGOS "artigos"
 #define PATHTSTRINGS "strings"
 #define PATHSTOCKS "stocks"
+#define PATHAGREGSTATE "agState"
 #define PATHVENDAS "vendas"
 #define TAM_ARTIGO_STR_WITH_NEWLINE 23
 #define TAM_ARTIGO_STR 22
