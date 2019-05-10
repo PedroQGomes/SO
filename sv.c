@@ -11,29 +11,35 @@
 PCache arr[CACHE_SIZE];
 
 
-int getPriceCache(int codigo){ // retorna -1 se o codigo nao está na cache
+int getPriceCache(int codigo,int *preco){ // retorna -1 se o codigo nao está na cache
+    int x = (-1);
     for(int i = 0; i < CACHE_SIZE;i++){
         if(((arr[i])->ID) == codigo){
             (arr[i])->acessos += 1;
-            return ((arr[i])->price);
+            *preco = ((arr[i])->price);
+            x = 0;
+            break;
         }
     }
-    return -1;
+    return x;
 }
 
-// tenho de ver primeiro se está em cache, se estiver,incremento o numero dele,se nao vou a ficheiro
-// buscar e incremento no ficherio cache o nr dele, se compensar mudo-o para a cache
-void getPrice(int codigo,int *preco){
-    int fd1;
+
+int getPriceFile(int codigo,int *preco){ // retorna -1 se o artigo nao existe, 0 se tudo bem
+    int fd1,tmp = (-1);
     fd1 = open(PATHARTIGOS,O_RDONLY);
     if(fd1 <= 0 ) perror("ERRO AO ABRIR ARTIGOS");
     Artigo *atg = malloc(sizeof(Artigo));
     lseek(fd1,codigo * sizeof(Artigo),SEEK_SET);
-    if(read(fd1,atg,sizeof(Artigo)) > 0) {
+    read(fd1,atg,sizeof(Artigo));
+    if((atg->ID) == codigo){
         *preco = atg->price;
-    }   
+        tmp = 0;
+    }
+    return tmp;
 }// done
 
+// incrementa o nuemro de acessos de uma artigo
 int atualizaFileCache(int codigo,int *preco){
     int fd1;
     fd1 = open(PATHFCACHE,O_RDWR);
@@ -51,17 +57,59 @@ int atualizaFileCache(int codigo,int *preco){
     write(fd1,&c,sizeof(struct file));
     return (c.acessos);
 }
+int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice que esteja vaizio
+    int res = (-1);
+    for(int i = 0; i < CACHE_SIZE;i++){
+        if((arr[i]->ID) < 0){
+            res = i;
+            break;
+        }
+
+    }
+    return res;
+}
+
+void lookUpCache(int codigo,int *preco,int ac){
+    int tmpacessos,tmpIndice = 0; 
+    int x = isEmptyCache();
+    if(x < 0){ // a cache está cheia -> verificar se tem mais iterações do ques os existentes para mudar
+        for(int i = 1; i < CACHE_SIZE;i++){ // serve para ir buscar o indice com menor acessos e o numero menor de acessos
+            tmpacessos = (arr[0])->acessos;
+            if((arr[i]->acessos) < tmpacessos){
+                tmpacessos = (arr[i])->acessos;
+                tmpIndice = i;
+            }
+        }
+
+        if(ac > tmpacessos){
+            (arr[tmpIndice])->ID = codigo;
+            (arr[tmpIndice])->price = *preco;
+            (arr[tmpIndice])->acessos = ac;
+        }
+
+    }else{ // tem lugar na cache
+        arr[x]->ID = codigo;
+        arr[x]->price = *preco;
+        arr[x]->acessos = ac;
+    }
+
+}
+
 
 void manageArtigo(int codigo,int *preco){
     int acessos;
-    int x = getPriceCache(codigo);
-    if(x > (-1)){ // nao existe em cache 
-        getPrice(codigo,preco);
-    }else{// existe na cache
-        getPrice(codigo,preco);
-        acessos = atualizaFileCache(codigo,preco);
-
+    int x = getPriceCache(codigo,preco);
+    if(x < 0) { // nao existe em cache 
+        x = getPriceFile(codigo,preco);
+        if(x < 0){ // o artigo nao existe -> mensagem de erro
+            *preco = (-1);
+        }
+        else{
+            acessos = atualizaFileCache(codigo,preco);
+            lookUpCache(codigo,preco,acessos);
+        }
     }
+    
 }
 
 
@@ -86,10 +134,8 @@ int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     if(read(fd1,&stk,sizeof(Stocks)) > 0) {
         stk.qnt += quantidade;
-    } else {
-        stk.numCod = codigo;
-        stk.qnt = quantidade;
-    }
+    } 
+
     if(stk.qnt < 0 ) stk.qnt = 0;
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     write(fd1,&stk,sizeof(stk));    
