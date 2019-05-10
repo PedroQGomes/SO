@@ -10,15 +10,41 @@
 
 int artigosFile,stringsFile;
 
+ssize_t readln(int fd, char* buffer) {
+    int size = 0;
+    char c;
+    while(read(fd,&c,1) > 0) {
+        buffer[size] = c;
+        size++;
+        if(c == '\n') return size;
+        if(c == '\0') return size;
+    }
+    return size;
+}
+
+
+
 
 void compactStrings() {
-    int newStringsFile = open("tmpStrings",O_CREAT | O_WRONLY,0666);
+    printf("COMPACTANDO\n");
+    int newStringsFile = open("tmpStrings",O_CREAT | O_WRONLY | O_APPEND,0666);
     Artigo tmp = {0,0,0};
     lseek(artigosFile,0,SEEK_SET);
     while(read(artigosFile,&tmp,sizeof(Artigo)) > 0) {
-        
+        off_t _stringRef = lseek(newStringsFile,0,SEEK_CUR);
+        lseek(stringsFile,tmp.stringRef,SEEK_SET);
+        char buffer[100];
+        readln(stringsFile,buffer);
+        write(newStringsFile,buffer,strlen(buffer));
+        lseek(artigosFile,tmp.ID*(sizeof(Artigo)),SEEK_SET);
+        tmp.stringRef = _stringRef;
+        write(artigosFile,&tmp,sizeof(Artigo));
     }
-
+    close(newStringsFile);
+    close(stringsFile);
+    remove(PATHTSTRINGS);
+    rename("tmpStrings",PATHTSTRINGS);
+    stringsFile = open(PATHTSTRINGS,O_RDWR);
 }
 
 void insereArtigo(char *name, int _price)
@@ -77,6 +103,7 @@ int initFileDescriptors() {
 
 int main()
 {
+
     if(initFileDescriptors() == 0) return 0; 
     int flag = 0;
     while (flag == 0)
@@ -97,10 +124,12 @@ int main()
             alteraNomeArtigo(atoi(fields[1]), fields[2]);
         else if (strcmp(fields[0], "p") == 0)
             alteraPrecoArtigo(atoi(fields[1]), atoi(fields[2]));
+        else if (buffer[0] == 'c')
+            compactStrings();
         else
             flag = 1;
     } 
     close(artigosFile);
-    close(stringsFile);
+    close(stringsFile); 
     return 0;
 }

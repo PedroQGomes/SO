@@ -25,21 +25,22 @@ char* getTimeStamp() {
     return strdup(timeStampStr);
 }
 
-int createFileWithTimeStamp() {
-    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
-    /*char buffTmp[10];
-    sprintf(buffTmp,"%d",getpid()); */
-    int filePid = open("agregRes",O_RDONLY);
+void writeToFDAgreg(int fileDescriptor) {
     AgregStruct tmp = {0,0,0};
-    while(read(filePid,&tmp,sizeof(AgregStruct)) > 0) {
+    int fd = open("agregRes",O_RDONLY);
+    while(read(fd,&tmp,sizeof(AgregStruct)) > 0) {
         if(tmp.qnt <= 0 ) continue;
         char tmpBuffFile[100];
         sprintf(tmpBuffFile,"Codigo: %d, Quantidade: %d, Preço: %d\n",tmp.ID,tmp.qnt, tmp.total);
-        write(fileWStamp,tmpBuffFile,strlen(tmpBuffFile));
+        write(fileDescriptor,tmpBuffFile,strlen(tmpBuffFile));
     }
-    close(fileWStamp);
-    close(filePid);
-    //remove(buffTmp);
+    close(fileDescriptor);
+    close(fd);
+}
+
+int createFileWithTimeStamp() {
+    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
+    writeToFDAgreg(fileWStamp);
     return 1;
 }
 
@@ -91,7 +92,6 @@ off_t agrega(off_t offset) {
     Sale sale;
     int fd = open(PATHVENDAS,O_RDONLY);
     off_t res = lseek(fd,0,SEEK_END);
-    printf("OFFSET:%lld\n",res);
     if( res == offset) return offset;
     lseek(fd,offset,SEEK_SET);
     while (read(fd,&sale,sizeof(Sale))>0) {
@@ -111,14 +111,13 @@ off_t agrega(off_t offset) {
 
 int main(int argc, char**argv) {
     off_t otread = readPosicaoAgreg();
-    printf("%lld\n",otread);
     if(argc > 1) {
         otread = agregaEmIntervalo(atoi(argv[1]),otread);
     } else {
         otread = agrega(otread);
     }
-    createFileWithTimeStamp();
     savePosicaoAgreg(otread);
+    writeToFDAgreg(1);
     return 0;
     
 }

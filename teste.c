@@ -84,9 +84,9 @@ void testeVendas() {
 
 int main()
 {
-    //testeMA();
+    testeMA();
     //testeStock();
-    testeVendas();
+    //testeVendas();
     //testeAG();
     return 0;
     
