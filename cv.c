@@ -67,7 +67,7 @@ int main(){
 			if(fd1 < 0 )break;
 			read(fd1, a, sizeof(struct answer));
 			if(a->preco == 0){
-				printf("O novo stock do produto é: %d\n", a->stock);
+				printf("O stock do produto é: %d\n", a->stock);
 			}else if(a->preco == -1){
 				printf("Não existe artigo referente ao código enviado");
 			}else{
