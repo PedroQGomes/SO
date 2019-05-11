@@ -125,7 +125,6 @@ void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
 
 
 
-
 int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     int fd1;
     Stocks stk;
@@ -157,6 +156,8 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     close(fd1);
 }
 
+
+
 void answerBack(char* pid,Answer ans){
     int fd2;
     char buffer[100];
@@ -169,7 +170,7 @@ void answerBack(char* pid,Answer ans){
     close(fd2);
 }
 
-void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
+void lookStock(char* pid,int cod,Answer ans){ // retornar o stock atualizado e o preço do artigo
     int tmpStock = 0,tmpPrice = 0;
     getStock(cod,&tmpStock);
     manageArtigo(cod,&tmpPrice);
@@ -179,16 +180,18 @@ void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta
     answerBack(pid,ans);
 }
 
-void entryStock(char* pid,int cod, int qnt,Answer ans){
-    int finalStock; 
+void entryStock(char* pid,int cod, int qnt,Answer ans){ // o preço retornado-> (-1) se nao existe o artigo ou 0 se existe
+    int finalStock,finalPrice; 
     finalStock = atualizaStock(cod,qnt);
-    ans->preco = 0;
+    manageArtigo(cod,&finalPrice);
+    if(finalPrice > 0){finalPrice = 0;}
+    ans->preco = finalPrice;
     ans->stock = finalStock;
     answerBack(pid,ans);
 }
 
-void entrySale(char* pid,int cod,int qnt,Answer ans){
-    int tmpStock = 0, res = 0;
+void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-1) se nao existe o artigo ou 0 se existe
+    int tmpStock = 0, res = 0,tmpPrice = 0;
     getStock(cod,&tmpStock);
     res = tmpStock - abs(qnt);
     if((res) >= 0) {
@@ -197,7 +200,9 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){
         atualizaVenda(cod,tmpStock);
     }
     tmpStock = atualizaStock(cod,qnt);
-    ans->preco = 0;
+    manageArtigo(cod,&tmpPrice);
+    if(tmpPrice > 0){tmpPrice = 0;}
+    ans->preco = tmpPrice;
     ans->stock = tmpStock;
     answerBack(pid,ans); 
 }
@@ -249,7 +254,7 @@ void sv(){
                     priceUpdCache(cod,qnt);
                 }
                 else if(qnt == 0){ // consulta
-                    lookStock(pid,cod,ans); // retornar o preço -1 se nao existir
+                    lookStock(pid,cod,ans); 
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
                 }else if( qnt < 0){ // venda
