@@ -3,12 +3,15 @@
 #define PATHARTIGOS "artigos"
 #define PATHTSTRINGS "strings"
 #define PATHSTOCKS "stocks"
+#define PATHAGREGSTATE "agState"
 #define PATHVENDAS "vendas"
+#define PATHFCACHE "fcache"
 #define TAM_ARTIGO_STR_WITH_NEWLINE 23
 #define TAM_ARTIGO_STR 22
-#define CACHE_SIZE 10;
+#define CACHE_SIZE 10
 typedef struct action* Action;
 typedef struct answer* Answer;
+typedef struct _cache* PCache;
 
 typedef struct _agregStruct {
     int ID;
@@ -47,3 +50,13 @@ struct answer
     int preco; // preco do produto
 }answer;
 
+struct _cache{
+    int ID;
+    int price;
+    int acessos;
+}Cache;
+
+typedef struct file{
+    int codigo;
+    int acessos;
+}File;

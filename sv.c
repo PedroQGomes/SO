@@ -8,19 +8,110 @@
 #include <string.h>
 #include "constants.h"
 
+PCache arr[CACHE_SIZE];
 
-Artigo* getArtigo(int codigo,int *preco){
-    int fd1;
+
+int getPriceCache(int codigo,int *preco){ // retorna -1 se o codigo nao está na cache
+    int x = (-1);
+    for(int i = 0; i < CACHE_SIZE;i++){
+        if(((arr[i])->ID) == codigo){
+            (arr[i])->acessos += 1;
+            *preco = ((arr[i])->price);
+            x = 0;
+            break;
+        }
+    }
+    return x;
+}
+
+
+int getPriceFile(int codigo,int *preco){ // retorna -1 se o artigo nao existe, 0 se tudo bem
+    int fd1,tmp = (-1);
     fd1 = open(PATHARTIGOS,O_RDONLY);
     if(fd1 <= 0 ) perror("ERRO AO ABRIR ARTIGOS");
     Artigo *atg = malloc(sizeof(Artigo));
     lseek(fd1,codigo * sizeof(Artigo),SEEK_SET);
-    if(read(fd1,atg,sizeof(Artigo)) > 0) {
+    read(fd1,atg,sizeof(Artigo));
+    if((atg->ID) == codigo){
         *preco = atg->price;
-        return atg;
-    }   
-    return NULL;
+        tmp = 0;
+    }
+    return tmp;
 }// done
+
+// incrementa o nuemro de acessos de uma artigo
+int atualizaFileCache(int codigo,int *preco){
+    int fd1;
+    fd1 = open(PATHFCACHE,O_RDWR);
+    File c;
+    lseek(fd1,codigo *(sizeof (struct file)),SEEK_SET);
+    read(fd1,&c,sizeof(struct file));
+    if(c.codigo == codigo){
+        c.acessos += 1; 
+    }
+    else{
+        c.codigo = codigo;
+        c.acessos = 1;
+    }
+    lseek(fd1,codigo *(sizeof (struct file)),SEEK_SET);
+    write(fd1,&c,sizeof(struct file));
+    return (c.acessos);
+}
+int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice que esteja vaizio
+    int res = (-1);
+    for(int i = 0; i < CACHE_SIZE;i++){
+        if((arr[i]->ID) < 0){
+            res = i;
+            break;
+        }
+
+    }
+    return res;
+}
+
+void lookUpCache(int codigo,int *preco,int ac){
+    int tmpacessos,tmpIndice = 0; 
+    int x = isEmptyCache();
+    if(x < 0){ // a cache está cheia -> verificar se tem mais iterações do ques os existentes para mudar
+        for(int i = 1; i < CACHE_SIZE;i++){ // serve para ir buscar o indice com menor acessos e o numero menor de acessos
+            tmpacessos = (arr[0])->acessos;
+            if((arr[i]->acessos) < tmpacessos){
+                tmpacessos = (arr[i])->acessos;
+                tmpIndice = i;
+            }
+        }
+
+        if(ac > tmpacessos){
+            (arr[tmpIndice])->ID = codigo;
+            (arr[tmpIndice])->price = *preco;
+            (arr[tmpIndice])->acessos = ac;
+        }
+
+    }else{ // tem lugar na cache
+        arr[x]->ID = codigo;
+        arr[x]->price = *preco;
+        arr[x]->acessos = ac;
+    }
+
+}
+
+
+void manageArtigo(int codigo,int *preco){
+    int acessos;
+    int x = getPriceCache(codigo,preco);
+    if(x < 0) { // nao existe em cache 
+        x = getPriceFile(codigo,preco);
+        if(x < 0){ // o artigo nao existe -> mensagem de erro
+            *preco = (-1);
+        }
+        else{
+            acessos = atualizaFileCache(codigo,preco);
+            lookUpCache(codigo,preco,acessos);
+        }
+    }
+    
+}
+
 
 void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     int fd1;
@@ -43,10 +134,9 @@ int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     if(read(fd1,&stk,sizeof(Stocks)) > 0) {
         stk.qnt += quantidade;
-    } else {
-        stk.numCod = codigo;
-        stk.qnt = quantidade;
-    }
+    } 
+
+    if(stk.qnt < 0 ) stk.qnt = 0;
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     write(fd1,&stk,sizeof(stk));    
     close(fd1);
@@ -54,8 +144,9 @@ int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
 }
 
 void atualizaVenda(int codigo,int quantidade){ // done mas por testar
+    if(quantidade == 0) return;
     int preco,fd1;
-    getArtigo(codigo,&preco);
+    manageArtigo(codigo,&preco);
     Sale venda;
     venda.price = abs(quantidade) * preco;
     venda.ID = codigo;
@@ -63,6 +154,7 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     fd1 = open(PATHVENDAS,O_WRONLY);
     lseek(fd1,0,SEEK_END);
     write(fd1,&venda,sizeof(Sale));
+    close(fd1);
 }
 
 void answerBack(char* pid,Answer ans){
@@ -80,7 +172,7 @@ void answerBack(char* pid,Answer ans){
 void lookStock(char* pid,int cod,Answer ans){ // qnd o cliente pede uma consulta de stock
     int tmpStock = 0,tmpPrice = 0;
     getStock(cod,&tmpStock);
-    getArtigo(cod,&tmpPrice);
+    manageArtigo(cod,&tmpPrice);
     ans->stock = tmpStock;
     printf("Codigo: %d , STOCK TMP:%d\n",cod,tmpStock);
     ans->preco = tmpPrice;
@@ -96,27 +188,52 @@ void entryStock(char* pid,int cod, int qnt,Answer ans){
 }
 
 void entrySale(char* pid,int cod,int qnt,Answer ans){
-    int tmpStock;
-    atualizaVenda(cod,qnt);
+    int tmpStock = 0, res = 0;
+    getStock(cod,&tmpStock);
+    res = tmpStock - abs(qnt);
+    if((res) >= 0) {
+        atualizaVenda(cod,qnt);
+    } else {
+        atualizaVenda(cod,tmpStock);
+    }
     tmpStock = atualizaStock(cod,qnt);
     ans->preco = 0;
     ans->stock = tmpStock;
     answerBack(pid,ans); 
 }
 
-void updateCache(int codigo,int quantidade){
-
+void initCache(){
+    PCache c;
+    int i = 0;
+    while(i < CACHE_SIZE){
+        c->ID = (-2);
+        c->price = (-2);
+        c->acessos = 0;
+        arr[i] = c;
+        i++;
+    }
 }
+
+void priceUpdCache(int cod,int qnt){
+    for(int i=0; i< CACHE_SIZE;i++){
+        if((arr[i])->ID == cod){
+            (arr[i])->price = qnt;
+            break;
+        }
+    }
+}
+
 
 void sv(){
     int server,lerdados,fd1,cod,qnt,status;
     Action dados = (Action) malloc(sizeof(struct action));
     char pid[10];
-    Artigo cache[10];
     pid_t res;
 
     server = mkfifo(serverPipe,0666);
     if(server < 0){perror("FIFO");} else printf("Server is open\n");
+    
+    initCache();
     while (1){
         // abrir o fifo                     
         fd1 = open(serverPipe,O_RDONLY);
@@ -129,14 +246,14 @@ void sv(){
             if((res = fork()) == 0){ 
                 Answer ans = (Answer) malloc(sizeof(struct answer));
                 if((dados->pid) < 0){
-                    updateCache(cod,qnt);
+                    priceUpdCache(cod,qnt);
                 }
                 else if(qnt == 0){ // consulta
-                    lookStock(pid,cod,ans);
+                    lookStock(pid,cod,ans); // retornar o preço -1 se nao existir
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
                 }else if( qnt < 0){ // venda
-                    entrySale(pid,cod,qnt,ans);
+                    entrySale(pid,cod,qnt,ans); // retornar o preço -1 se nao existir
                 }
                 _exit(0);
             }else{ 
