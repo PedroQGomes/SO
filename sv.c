@@ -190,7 +190,6 @@ void answerBack(char* pid,Answer ans){
     fd2 = open(buffer,O_WRONLY);
     printf("PID A QUEM ENVIA %s\n",pid);
     ssize_t res = write(fd2,ans,sizeof(struct answer));
-    printf("TAMANHO A ENVIAR: %zd\n",res);
     if(res == -1) perror("MENSAGEM");
     close(fd2);
 }
@@ -200,7 +199,6 @@ void lookStock(char* pid,int cod,Answer ans){ // retornar o stock atualizado e o
     getStock(cod,&tmpStock);
     manageArtigo(cod,&tmpPrice);
     ans->stock = tmpStock;
-    printf("Codigo: %d , STOCK TMP:%d\n",cod,tmpStock);
     ans->preco = tmpPrice;
     answerBack(pid,ans);
 }
@@ -296,6 +294,7 @@ void sv(){
         } 
         close(fd1);
     }
+    remove(serverPipe);
 }
 
 
