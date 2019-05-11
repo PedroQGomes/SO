@@ -47,6 +47,15 @@ void compactStrings() {
     stringsFile = open(PATHTSTRINGS,O_RDWR);
 }
 
+void callServer(int flagpipe,int ID) {
+    int fifo = open(serverPipe,O_WRONLY);
+    Action act = {0};
+    act->pid = flagpipe;
+    act->codigo = ID;
+    write(fifo,act,sizeof(Action));
+    close(fifo);
+}
+
 void insereArtigo(char *name, int _price)
 {
     ssize_t strRef = lseek(stringsFile, 0, SEEK_END);
@@ -88,6 +97,7 @@ void alteraPrecoArtigo(int id, int _price)
     lseek(artigosFile, artOffset, SEEK_SET);
     tmp.price = _price;
     write(artigosFile, &tmp, sizeof(Artigo));
+    callServer(-2,id);
 }
 
 int initFileDescriptors() {
@@ -124,8 +134,10 @@ int main()
             alteraNomeArtigo(atoi(fields[1]), fields[2]);
         else if (strcmp(fields[0], "p") == 0)
             alteraPrecoArtigo(atoi(fields[1]), atoi(fields[2]));
-        else if (buffer[0] == 'c')
+        else if (strlen(buffer) == 1 && buffer[0] == 'c')
             compactStrings();
+        else if (strlen(buffer) == 1 && buffer[0] == 'a')
+            callServer(-3,-1);
         else
             flag = 1;
     } 

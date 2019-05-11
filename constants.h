@@ -42,19 +42,19 @@ struct action{
 		pid_t pid; // um pipe com o nome da pid do cliente que o esta a pedir
 		int codigo; // código do artigo
 		int quantidade; //montate do artigo para as vendas, 0 caso seja instrução de consulta
-    }action;
+};
 
 struct answer
 {
     int stock; // quantidade atualizada em stock
     int preco; // preco do produto
-}answer;
+};
 
 struct _cache{
     int ID;
     int price;
     int acessos;
-}Cache;
+};
 
 typedef struct file{
     int codigo;
