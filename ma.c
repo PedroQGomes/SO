@@ -23,10 +23,12 @@ ssize_t readln(int fd, char* buffer) {
 }
 
 
+int stringFileOverPercentage() {
+    // DEPOIIS FAÇO
+}
 
 
 void compactStrings() {
-    printf("COMPACTANDO\n");
     int newStringsFile = open("tmpStrings",O_CREAT | O_WRONLY | O_APPEND,0666);
     Artigo tmp = {0,0,0};
     lseek(artigosFile,0,SEEK_SET);
@@ -49,7 +51,7 @@ void compactStrings() {
 
 void callServer(int flagpipe,int ID) {
     int fifo = open(serverPipe,O_WRONLY);
-    Action act = {0};
+    Action act = malloc(sizeof(Action));
     act->pid = flagpipe;
     act->codigo = ID;
     write(fifo,act,sizeof(Action));
@@ -69,7 +71,6 @@ void insereArtigo(char *name, int _price)
     write(stringsFile, name, strlen(name));
 }
 
-// FALTA COMUNICAÇAO COM O SERVER
 
 void alteraNomeArtigo(int id, char *name)
 {   
@@ -85,8 +86,6 @@ void alteraNomeArtigo(int id, char *name)
     write(stringsFile, name, strlen(name));
 }
 
-
-// FALTA COMUNICAÇAO COM O SERVER
 
 void alteraPrecoArtigo(int id, int _price)
 {
@@ -134,9 +133,11 @@ int main()
             alteraNomeArtigo(atoi(fields[1]), fields[2]);
         else if (strcmp(fields[0], "p") == 0)
             alteraPrecoArtigo(atoi(fields[1]), atoi(fields[2]));
-        else if (strlen(buffer) == 1 && buffer[0] == 'c')
+        else if (strlen(buffer) == 2 && buffer[0] == 'c') {
             compactStrings();
-        else if (strlen(buffer) == 1 && buffer[0] == 'a')
+            printf("Strings compactadas\n");
+        } 
+        else if (strlen(buffer) == 2 && buffer[0] == 'a')
             callServer(-3,-1);
         else
             flag = 1;

@@ -86,7 +86,7 @@ int main()
 {
     testeMA();
     //testeStock();
-    //testeVendas();
+    testeVendas();
     //testeAG();
     return 0;
     

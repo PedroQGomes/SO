@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+#include <time.h>
 #include "constants.h"
 
 PCache arr[CACHE_SIZE];
@@ -36,6 +38,7 @@ int getPriceFile(int codigo,int *preco){ // retorna -1 se o artigo nao existe, 0
         *preco = atg->price;
         tmp = 0;
     }
+    close(fd1);
     return tmp;
 }// done
 
@@ -55,6 +58,7 @@ int atualizaFileCache(int codigo,int *preco){
     }
     lseek(fd1,codigo *(sizeof (struct file)),SEEK_SET);
     write(fd1,&c,sizeof(struct file));
+    close(fd1);
     return (c.acessos);
 }
 int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice que esteja vaizio
@@ -112,6 +116,26 @@ void manageArtigo(int codigo,int *preco){
     
 }
 
+char* getTimeStamp() {
+    struct tm *timeStampStruct;
+    char timeStampStr[80];
+    time_t currTime;
+    time(&currTime);
+    timeStampStruct = localtime(&currTime);
+    strftime(timeStampStr,80,"%Y-%m-%dT%X",timeStampStruct);
+    return strdup(timeStampStr);
+}
+
+void runAggregator(){
+    int vendasFile = open(PATHVENDAS,O_RDONLY);
+    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
+    dup2(vendasFile,0);
+    dup2(fileWStamp,1);
+    execl("./ag","ag",NULL);
+    close(fileWStamp);
+    close(vendasFile);
+}
+
 
 void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     int fd1;
@@ -121,6 +145,7 @@ void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     if (read(fd1,&stk,sizeof(Stocks)) > 0 && stk.qnt > 0) {
         *stock = stk.qnt;
     } else *stock = 0;
+    close(fd1);
 }  // done 
 
 
@@ -248,12 +273,13 @@ void sv(){
             sprintf(pid,"%d",dados->pid);
             cod = dados->codigo;
             qnt = dados->quantidade;
-            if((res = fork()) == 0){ 
+            if((dados->pid) ==  -2){
+                priceUpdCache(cod,qnt); 
+            } else if((res = fork()) == 0){ 
                 Answer ans = (Answer) malloc(sizeof(struct answer));
-                if((dados->pid) < 0){
-                    priceUpdCache(cod,qnt);
-                }
-                else if(qnt == 0){ // consulta
+                if(dados->pid == -3) {
+                    runAggregator();
+                } else if(qnt == 0){ // consulta
                     lookStock(pid,cod,ans); 
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
@@ -265,6 +291,7 @@ void sv(){
                 waitpid(res,&status,WNOHANG);
                 //WIFEXITED(status); 
             } 
+            
 
         } 
         close(fd1);
@@ -273,16 +300,7 @@ void sv(){
 
 
 int main(){
-    int x= 0;
-    //atualizaStock(1234,3);
-/*    atualizaStock(1235,1);
-    atualizaStock(1234,7);
-    atualizaStock(1235,(-3));
 
-    getStock(1234,&x);
-    printf("stock de 1234 %d\n",x);
-    getStock(1235,&x);
-    printf("stock de 1235 %d\n",x); */
     sv();
     return 0;
 }

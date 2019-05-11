@@ -14,17 +14,6 @@ typedef struct _agregState {
 } AgregState;
 
 
-
-char* getTimeStamp() {
-    struct tm *timeStampStruct;
-    char timeStampStr[80];
-    time_t currTime;
-    time(&currTime);
-    timeStampStruct = localtime(&currTime);
-    strftime(timeStampStr,80,"%Y-%m-%dT%X",timeStampStruct);
-    return strdup(timeStampStr);
-}
-
 void writeToFDAgreg(int fileDescriptor) {
     AgregStruct tmp = {0,0,0};
     int fd = open("agregRes",O_RDONLY);
@@ -38,11 +27,7 @@ void writeToFDAgreg(int fileDescriptor) {
     close(fd);
 }
 
-int createFileWithTimeStamp() {
-    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
-    writeToFDAgreg(fileWStamp);
-    return 1;
-}
+
 
 off_t readPosicaoAgreg() {
     int saveState = open(PATHAGREGSTATE,O_CREAT | O_RDWR,0666);
@@ -94,7 +79,7 @@ off_t agrega(off_t offset) {
     off_t res = lseek(fd,0,SEEK_END);
     if( res == offset) return offset;
     lseek(fd,offset,SEEK_SET);
-    while (read(fd,&sale,sizeof(Sale))>0) {
+    while (read(0,&sale,sizeof(Sale))>0) {
        AgregStruct tmp = {0,0,0};
        lseek(filePid,sizeof(AgregStruct)*sale.ID,SEEK_SET);
        read(filePid,&tmp,sizeof(AgregStruct));
