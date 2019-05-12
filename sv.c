@@ -142,9 +142,13 @@ void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     Stocks stk;
     fd1 = open(PATHSTOCKS,O_RDONLY);
     lseek(fd1,codigo*sizeof(Stocks),SEEK_SET);
-    if (read(fd1,&stk,sizeof(Stocks)) > 0 && stk.qnt > 0) {
-        *stock = stk.qnt;
-    } else *stock = 0;
+    read(fd1,&stk,sizeof(Stocks));
+    if((stk.numCod) == codigo){
+        *stock = stk.qnt; 
+    }
+    else{
+        *stock = 0;
+    }
     close(fd1);
 }  // done 
 
@@ -205,9 +209,14 @@ void lookStock(char* pid,int cod,Answer ans){ // retornar o stock atualizado e o
 
 void entryStock(char* pid,int cod, int qnt,Answer ans){ // o preço retornado-> (-1) se nao existe o artigo ou 0 se existe
     int finalStock,finalPrice; 
-    finalStock = atualizaStock(cod,qnt);
     manageArtigo(cod,&finalPrice);
-    if(finalPrice > 0){finalPrice = 0;}
+    if(finalPrice < 0){
+        ans->preco = finalPrice;
+        ans->stock = -2;
+        answerBack(pid,ans);
+        return;
+    }else{finalPrice = 0;}
+    finalStock = atualizaStock(cod,qnt);
     ans->preco = finalPrice;
     ans->stock = finalStock;
     answerBack(pid,ans);
@@ -215,6 +224,13 @@ void entryStock(char* pid,int cod, int qnt,Answer ans){ // o preço retornado-> 
 
 void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-1) se nao existe o artigo ou 0 se existe
     int tmpStock = 0, res = 0,tmpPrice = 0;
+    manageArtigo(cod,&tmpPrice);
+    if(tmpPrice < 0){
+        ans->preco = tmpPrice;
+        ans->stock = -2;
+        answerBack(pid,ans);
+        return;
+    }else{tmpPrice = 0;}
     getStock(cod,&tmpStock);
     res = tmpStock - abs(qnt);
     if((res) >= 0) {
@@ -223,15 +239,13 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-
         atualizaVenda(cod,tmpStock);
     }
     tmpStock = atualizaStock(cod,qnt);
-    manageArtigo(cod,&tmpPrice);
-    if(tmpPrice > 0){tmpPrice = 0;}
     ans->preco = tmpPrice;
     ans->stock = tmpStock;
     answerBack(pid,ans); 
 }
 
 void initCache(){
-    PCache c;
+    PCache c = (PCache) malloc(sizeof(PCache));
     int i = 0;
     while(i < CACHE_SIZE){
         c->ID = (-2);
@@ -277,7 +291,7 @@ void sv(){
                 Answer ans = (Answer) malloc(sizeof(struct answer));
                 if(dados->pid == -3) {
                     runAggregator();
-                } else if(qnt == 0){ // consulta
+                }else if(qnt == 0){ // consulta
                     lookStock(pid,cod,ans); 
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
@@ -299,7 +313,7 @@ void sv(){
 
 
 int main(){
-
+    //initCache();
     sv();
     return 0;
 }
