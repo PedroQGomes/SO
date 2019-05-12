@@ -76,6 +76,7 @@ int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice 
 void lookUpCache(int codigo,int *preco,int ac){
     int tmpacessos,tmpIndice = 0; 
     int x = isEmptyCache();
+    printf("%d\n",x);
     if(x < 0){ // a cache está cheia -> verificar se tem mais iterações do ques os existentes para mudar
         for(int i = 1; i < CACHE_SIZE;i++){ // serve para ir buscar o indice com menor acessos e o numero menor de acessos
             tmpacessos = (arr[0])->acessos;
@@ -245,13 +246,12 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-
 }
 
 void initCache(){
-    PCache c = (PCache) malloc(sizeof(PCache));
     int i = 0;
     while(i < CACHE_SIZE){
-        c->ID = (-2);
-        c->price = (-2);
-        c->acessos = 0;
-        arr[i] = c;
+        arr[i] = (PCache) malloc(sizeof(PCache));
+        arr[i]->ID = (-2);
+        arr[i]->price = (-2);
+        arr[i]->acessos = 0;
         i++;
     }
 }
@@ -313,7 +313,7 @@ void sv(){
 
 
 int main(){
-    //initCache();
+    
     sv();
     return 0;
 }
