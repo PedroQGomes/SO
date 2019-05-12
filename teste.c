@@ -82,11 +82,20 @@ void testeVendas() {
     close(fileDescriptor);
 }
 
+void testeRead() {
+    while(1) {
+        char buffer[100] = "";
+        read(0,buffer,100);
+        write(1,buffer,100);
+    }
+}
+
 int main()
 {
+    //testeRead();
     testeMA();
     //testeStock();
-    testeVendas();
+    //testeVendas();
     //testeAG();
     return 0;
     

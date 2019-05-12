@@ -8,6 +8,7 @@
 #define PATHFCACHE "fcache"
 #define TAM_ARTIGO_STR_WITH_NEWLINE 23
 #define TAM_ARTIGO_STR 22
+#define CONCURRENTAGG 2
 #define CACHE_SIZE 10
 typedef struct action* Action;
 typedef struct answer* Answer;

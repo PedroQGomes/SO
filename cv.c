@@ -28,8 +28,7 @@ void pai(){
 				act->quantidade = 0;
 			}
 			//printf("PID: %d, codigo: %d, quantidade :%d \n",act->pid, act->codigo,act->quantidade);
-			ssize_t res = write(fd, act, sizeof(struct action));
-			printf("Escrevi:%ld\n",res);
+			write(fd, act, sizeof(struct action));
 			} 
 		}
 	close(fd);
@@ -45,15 +44,17 @@ void filho(){
 			int fd1 = open(clientPipe, O_RDONLY);
 			if(fd1 < 0 )break;
 			ssize_t res = read(fd1, a, sizeof(struct answer));
-			printf("Li:%ld\n",res);
-			if(a->preco == 0){
-				printf("O stock do produto é: %d\n", a->stock);
-			}else if(a->preco == -1){
-				printf("Não existe artigo referente ao código enviado\n");
-			}else{
-				printf("O preço do produto é: %d\n", a->preco);
-				printf("O stock do produto é: %d\n",a->stock);
+			if(res != 0) {
+				if(a->preco == 0){
+					printf("O stock do produto é: %d\n", a->stock);
+				}else if(a->preco == -1){
+					printf("Não existe artigo referente ao código enviado\n");
+				}else{
+					printf("O preço do produto é: %d\n", a->preco);
+					printf("O stock do produto é: %d\n",a->stock);
+				}
 			}
+			
 			close(fd1);
 		}
 		remove(clientPipe);

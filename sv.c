@@ -126,12 +126,39 @@ char* getTimeStamp() {
     return strdup(timeStampStr);
 }
 
+ /*int vendasFile = open(PATHVENDAS,O_RDONLY);
+    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
+    dup2(vendasFile,0);
+    //dup2(fileWStamp,1);
+    for(int i = 0; i<CONCURRENTAGG; i++) {
+        lseek(0,i*sizeof(AgregStruct),SEEK_SET);
+        if(fork() == 0) {
+            execl("./ag","ag","1");
+            _exit(0);
+        }
+    }
+     
+    close(fileWStamp);
+    close(vendasFile);
+    }
+ */
 void runAggregator(){
     int vendasFile = open(PATHVENDAS,O_RDONLY);
     int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
     dup2(vendasFile,0);
-    dup2(fileWStamp,1);
-    execl("./ag","ag",NULL);
+    for(int i = 0; i<CONCURRENTAGG; i++) {
+        lseek(0,i*sizeof(AgregStruct),SEEK_SET);
+        if(fork() == 0) {
+            /*char buffer[3];
+            sprintf(buffer,"%d",i);
+            int fd = open(buffer,O_CREAT | O_RDWR, 0666); */
+            dup2(fileWStamp,1);
+            execl("./ag","ag","1");
+            //close(fd);
+            _exit(0);
+        }
+    }
+     
     close(fileWStamp);
     close(vendasFile);
 }
@@ -139,10 +166,11 @@ void runAggregator(){
 
 void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     int fd1;
-    Stocks stk;
+    Stocks stk = {0,0};
     fd1 = open(PATHSTOCKS,O_RDONLY);
     lseek(fd1,codigo*sizeof(Stocks),SEEK_SET);
-    if (read(fd1,&stk,sizeof(Stocks)) > 0 && stk.qnt > 0) {
+    read(fd1,&stk,sizeof(Stocks));
+    if (stk.numCod == codigo) {
         *stock = stk.qnt;
     } else *stock = 0;
     close(fd1);
@@ -152,14 +180,13 @@ void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
 
 int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     int fd1;
-    Stocks stk;
+    Stocks stk = {0,0};
     fd1 = open(PATHSTOCKS,O_RDWR);
     if(fd1 <= 0) perror("A Atualizar o stock");
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
-    if(read(fd1,&stk,sizeof(Stocks)) > 0) {
-        stk.qnt += quantidade;
-    } 
-
+    read(fd1,&stk,sizeof(Stocks));
+    stk.numCod = codigo;
+    stk.qnt += quantidade;
     if(stk.qnt < 0 ) stk.qnt = 0;
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     write(fd1,&stk,sizeof(stk));    
@@ -231,9 +258,9 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-
 }
 
 void initCache(){
-    PCache c;
     int i = 0;
     while(i < CACHE_SIZE){
+        PCache c = malloc(sizeof(PCache));
         c->ID = (-2);
         c->price = (-2);
         c->acessos = 0;
@@ -294,7 +321,7 @@ void sv(){
         } 
         close(fd1);
     }
-    remove(serverPipe);
+    
 }
 
 

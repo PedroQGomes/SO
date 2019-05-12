@@ -13,5 +13,5 @@ clean:
 	rm sv ma cv ag teste
 
 cleanFiles:
-	rm artigos strings vendas stocks
+	rm -f artigos strings vendas stocks agregRes agState
 	touch artigos strings vendas stocks

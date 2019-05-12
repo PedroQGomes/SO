@@ -110,19 +110,10 @@ int initFileDescriptors() {
     return 1;
 }
 
-int main()
-{
-
-    if(initFileDescriptors() == 0) return 0; 
-    int flag = 0;
-    while (flag == 0)
-    {
-        char buffer[100] = ""; //PARA AGUENTAR OS 84 caracteres que as strings podem ter + o preço
-        ssize_t readSize = read(0, buffer, 100);
-        if(readSize <= 0) break;
-        char *token = strtok(buffer, " ");
-        char *fields[3];
-        for (int i = 0; token; i++)
+void readInput(char* buffer,int *flag) {
+    char *token = strtok(buffer, " ");
+    char *fields[3];
+    for (int i = 0; token; i++)
         {
             fields[i] = strdup(token);
             token = strtok(NULL, " ");
@@ -140,7 +131,21 @@ int main()
         else if (strlen(buffer) == 2 && buffer[0] == 'a')
             callServer(-3,-1);
         else
-            flag = 1;
+            *flag = 1;
+}
+
+int main()
+{
+
+    if(initFileDescriptors() == 0) return 0; 
+    int flag = 0;
+    while (flag == 0)
+    {
+        char buffer[100] = ""; //PARA AGUENTAR OS 84 caracteres que as strings podem ter + o preço
+        readln(0, buffer);
+        readInput(buffer,&flag);
+        
+        
     } 
     close(artigosFile);
     close(stringsFile); 
