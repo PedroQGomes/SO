@@ -76,6 +76,7 @@ int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice 
 void lookUpCache(int codigo,int *preco,int ac){
     int tmpacessos,tmpIndice = 0; 
     int x = isEmptyCache();
+    printf("%d\n",x);
     if(x < 0){ // a cache está cheia -> verificar se tem mais iterações do ques os existentes para mudar
         for(int i = 1; i < CACHE_SIZE;i++){ // serve para ir buscar o indice com menor acessos e o numero menor de acessos
             tmpacessos = (arr[0])->acessos;
@@ -232,9 +233,14 @@ void lookStock(char* pid,int cod,Answer ans){ // retornar o stock atualizado e o
 
 void entryStock(char* pid,int cod, int qnt,Answer ans){ // o preço retornado-> (-1) se nao existe o artigo ou 0 se existe
     int finalStock,finalPrice; 
-    finalStock = atualizaStock(cod,qnt);
     manageArtigo(cod,&finalPrice);
-    if(finalPrice > 0){finalPrice = 0;}
+    if(finalPrice < 0){
+        ans->preco = finalPrice;
+        ans->stock = -2;
+        answerBack(pid,ans);
+        return;
+    }else{finalPrice = 0;}
+    finalStock = atualizaStock(cod,qnt);
     ans->preco = finalPrice;
     ans->stock = finalStock;
     answerBack(pid,ans);
@@ -242,6 +248,13 @@ void entryStock(char* pid,int cod, int qnt,Answer ans){ // o preço retornado-> 
 
 void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-1) se nao existe o artigo ou 0 se existe
     int tmpStock = 0, res = 0,tmpPrice = 0;
+    manageArtigo(cod,&tmpPrice);
+    if(tmpPrice < 0){
+        ans->preco = tmpPrice;
+        ans->stock = -2;
+        answerBack(pid,ans);
+        return;
+    }else{tmpPrice = 0;}
     getStock(cod,&tmpStock);
     res = tmpStock - abs(qnt);
     if((res) >= 0) {
@@ -250,8 +263,6 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-
         atualizaVenda(cod,tmpStock);
     }
     tmpStock = atualizaStock(cod,qnt);
-    manageArtigo(cod,&tmpPrice);
-    if(tmpPrice > 0){tmpPrice = 0;}
     ans->preco = tmpPrice;
     ans->stock = tmpStock;
     answerBack(pid,ans); 
@@ -260,11 +271,10 @@ void entrySale(char* pid,int cod,int qnt,Answer ans){ // o preço retornado ->(-
 void initCache(){
     int i = 0;
     while(i < CACHE_SIZE){
-        PCache c = malloc(sizeof(PCache));
-        c->ID = (-2);
-        c->price = (-2);
-        c->acessos = 0;
-        arr[i] = c;
+        arr[i] = (PCache) malloc(sizeof(PCache));
+        arr[i]->ID = (-2);
+        arr[i]->price = (-2);
+        arr[i]->acessos = 0;
         i++;
     }
 }
@@ -304,7 +314,7 @@ void sv(){
                 Answer ans = (Answer) malloc(sizeof(struct answer));
                 if(dados->pid == -3) {
                     runAggregator();
-                } else if(qnt == 0){ // consulta
+                }else if(qnt == 0){ // consulta
                     lookStock(pid,cod,ans); 
                 }else if(qnt > 0){ // acrescentar ao stock
                     entryStock(pid,cod,qnt,ans);
@@ -326,7 +336,7 @@ void sv(){
 
 
 int main(){
-
+    
     sv();
     return 0;
 }
