@@ -8,6 +8,14 @@
 #include "constants.h"
 #include <sys/stat.h>
 
+void inthandler(){
+	char clientPipe[50] = "";
+	pid_t pid = getppid();
+	sprintf(clientPipe, "%s%d",PATH, pid);
+	remove(clientPipe);
+	_exit(0);
+	
+}
 
 void pai(){
 	char *token;
@@ -63,6 +71,7 @@ void filho(){
 
 
 int main(){
+	signal(SIGINT, inthandler);
 	if(fork() != 0){ //código que envia as instruções para o servidor -> PAI
 		pai();
 	} else{ //código que recebe os resultados das instruções e o escreve para stdout -> FILHO

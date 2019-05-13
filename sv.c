@@ -12,6 +12,11 @@
 
 PCache arr[CACHE_SIZE];
 
+void inthandler(){
+    remove(serverPipe);
+    _exit(0);
+}
+
 
 int getPriceCache(int codigo,int *preco){ // retorna -1 se o codigo nao está na cache
     int x = (-1);
@@ -305,6 +310,8 @@ void priceUpdCache(int cod,int qnt){
 
 
 void sv(){
+    signal(SIGINT, inthandler);
+
     int server,lerdados,fd1,cod,qnt,status;
     Action dados = (Action) malloc(sizeof(struct action));
     char pid[10];
