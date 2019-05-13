@@ -8,6 +8,19 @@
 #include "constants.h"
 #include <sys/stat.h>
 
+ssize_t readln(int fd, char* buffer, ssize_t buffLength) {
+    int size = 0;
+	ssize_t res = 0;
+	char c ;
+    while((res = read(fd,&c,1)) > 0 && size < buffLength) {
+		buffer[size] = c;
+		if(c == '\n') return size;
+        size++;
+    }
+	buffer[size] = '\0';
+    return size;
+}
+
 void inthandler(){
 	char clientPipe[50] = "";
 	pid_t pid = getppid();
@@ -18,27 +31,37 @@ void inthandler(){
 }
 
 void pai(){
-	char *token;
 	pid_t pid = getpid();
 	int fd = open(serverPipe, O_WRONLY);
 	Action act = (Action) malloc(sizeof(Action));
 	if(fd > 0){
+		printf("Conectado ao servidor\n");
 		while(1){
-			char line[50] = "";
-			read(0, line, sizeof(line));
-			token = strtok(line," ");
-			act->pid = pid;
-			act->codigo = atoi(token);
-			token = strtok(NULL," ");
-			if(token != NULL){
-				act->quantidade = atoi(token);
-			}else{	
-				act->quantidade = 0;
+			char line[20] = "";
+			if(readln(0,line,20) > 0) {
+					printf("STRING:%s\n",line);
+			if(strlen(line) > 0) {
+				char *token;
+				token = strtok(line," ");
+				act->pid = pid;
+				act->codigo = atoi(token);
+				token = strtok(NULL," ");
+				if(token != NULL){
+					act->quantidade = atoi(token);
+				}else{	
+					act->quantidade = 0;
+				}
+				//printf("PID: %d, codigo: %d, quantidade :%d \n",act->pid, act->codigo,act->quantidade);
+				write(fd, act, sizeof(struct action));
+				}
+				
 			}
-			//printf("PID: %d, codigo: %d, quantidade :%d \n",act->pid, act->codigo,act->quantidade);
-			write(fd, act, sizeof(struct action));
-			} 
 		}
+		
+			 	
+		 
+	} else printf("Servidor está desligado\n");
+
 	close(fd);
 }
 
@@ -52,7 +75,7 @@ void filho(){
 			int fd1 = open(clientPipe, O_RDONLY);
 			if(fd1 < 0 )break;
 			ssize_t res = read(fd1, a, sizeof(struct answer));
-			if(res != 0) {
+			if(res > 0) {
 				if(a->preco == 0){
 					printf("O stock do produto é: %d\n", a->stock);
 				}else if(a->preco == -1){

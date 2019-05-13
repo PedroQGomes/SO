@@ -10,10 +10,11 @@
 
 int artigosFile,stringsFile;
 
-ssize_t readln(int fd, char* buffer) {
+ssize_t readln(int fd, char* buffer, ssize_t buffLength) {
     int size = 0;
     char c;
-    while(read(fd,&c,1) > 0) {
+    while(read(fd,&c,1) > 0 && size < buffLength) {
+        if(c == -1) return -1;
         buffer[size] = c;
         size++;
         if(c == '\n') return size;
@@ -22,10 +23,6 @@ ssize_t readln(int fd, char* buffer) {
     return size;
 }
 
-
-int stringFileOverPercentage() {
-    // DEPOIIS FAÇO
-}
 
 
 void compactStrings() {
@@ -36,7 +33,7 @@ void compactStrings() {
         off_t _stringRef = lseek(newStringsFile,0,SEEK_CUR);
         lseek(stringsFile,tmp.stringRef,SEEK_SET);
         char buffer[100];
-        readln(stringsFile,buffer);
+        readln(stringsFile,buffer,100);
         write(newStringsFile,buffer,strlen(buffer));
         lseek(artigosFile,tmp.ID*(sizeof(Artigo)),SEEK_SET);
         tmp.stringRef = _stringRef;
@@ -48,6 +45,21 @@ void compactStrings() {
     rename("tmpStrings",PATHTSTRINGS);
     stringsFile = open(PATHTSTRINGS,O_RDWR);
 }
+
+int stringFileOverPercentage() {
+    ssize_t current = lseek(artigosFile,0,SEEK_SET);
+    ssize_t endOfArtigos = lseek(artigosFile,0,SEEK_END);
+    ssize_t endOfStrings = lseek(stringsFile,0,SEEK_END);
+    lseek(artigosFile,current,SEEK_SET);
+    if(1.2 * endOfArtigos < endOfStrings) {
+        compactStrings();
+        return 1;
+    }
+    return 0;
+    
+}
+
+
 
 void callServer(int flagpipe,int ID) {
     int fifo = open(serverPipe,O_WRONLY);
@@ -118,18 +130,26 @@ void readInput(char* buffer,int *flag) {
             fields[i] = strdup(token);
             token = strtok(NULL, " ");
         }
-        if (strcmp(fields[0], "i") == 0)
+        if (strcmp(fields[0], "i") == 0){
             insereArtigo(fields[1], atoi(fields[2]));
-        else if (strcmp(fields[0], "n") == 0)
+            printf("Artigo Inserido\n");
+        }
+        else if (strcmp(fields[0], "n") == 0) {
             alteraNomeArtigo(atoi(fields[1]), fields[2]);
-        else if (strcmp(fields[0], "p") == 0)
+            printf("Nome alterado\n");
+        }
+        else if (strcmp(fields[0], "p") == 0) {
             alteraPrecoArtigo(atoi(fields[1]), atoi(fields[2]));
+            printf("Preco alterado \n");
+        }
         else if (strlen(buffer) == 2 && buffer[0] == 'c') {
             compactStrings();
-            printf("Strings compactadas\n");
+            printf("Strings Compactadas\n");
         } 
-        else if (strlen(buffer) == 2 && buffer[0] == 'a')
+        else if (strlen(buffer) == 2 && buffer[0] == 'a') {
             callServer(-3,-1);
+            printf("Agregador a correr\n");
+        }
         else
             *flag = 1;
 }
@@ -137,13 +157,15 @@ void readInput(char* buffer,int *flag) {
 int main()
 {
 
-    if(initFileDescriptors() == 0) return 0; 
+    if(initFileDescriptors() == 0) return 0;
+    if(stringFileOverPercentage() == 1) printf("Strings Compactadas\n"); 
     int flag = 0;
     while (flag == 0)
     {
         char buffer[100] = ""; //PARA AGUENTAR OS 84 caracteres que as strings podem ter + o preço
-        readln(0, buffer);
-        readInput(buffer,&flag);
+        if(readln(0, buffer,20) > 0) {
+            readInput(buffer,&flag);
+        } else flag = 1;
         
         
     } 

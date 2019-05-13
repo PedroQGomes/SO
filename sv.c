@@ -81,7 +81,6 @@ int isEmptyCache(){ // retorna -1 se estiver td cheia, se nao retorna um indice 
 void lookUpCache(int codigo,int *preco,int ac){
     int tmpacessos,tmpIndice = 0; 
     int x = isEmptyCache();
-    printf("%d\n",x);
     if(x < 0){ // a cache está cheia -> verificar se tem mais iterações do ques os existentes para mudar
         for(int i = 1; i < CACHE_SIZE;i++){ // serve para ir buscar o indice com menor acessos e o numero menor de acessos
             tmpacessos = (arr[0])->acessos;
@@ -132,24 +131,6 @@ char* getTimeStamp() {
     return strdup(timeStampStr);
 }
 
- /*int vendasFile = open(PATHVENDAS,O_RDONLY);
-    int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
-    dup2(vendasFile,0);
-    //dup2(fileWStamp,1);
-    for(int i = 0; i<CONCURRENTAGG; i++) {
-        lseek(0,i*sizeof(AgregStruct),SEEK_SET);
-        if(fork() == 0) {
-            execl("./ag","ag","1");
-            _exit(0);
-        }
-    }
-     
-    close(fileWStamp);
-    close(vendasFile);
-    }
- */
-
-
 int calculateFileSales(int vendasFile) {
     off_t end = lseek(vendasFile,0,SEEK_END);
     lseek(vendasFile,0,SEEK_SET);
@@ -157,12 +138,10 @@ int calculateFileSales(int vendasFile) {
 }
 
 
-
 void runAggregator(){
     int vendasFile = open(PATHVENDAS,O_RDONLY);
     int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
     int res = calculateFileSales(vendasFile)/CONCURRENTAGG;
-    printf("RES:%d\n",res);
     dup2(vendasFile,0);
     for(int i = 0; i<CONCURRENTAGG; i++) {
         //lseek(0,(res*i)*sizeof(Sale),SEEK_SET);
@@ -179,7 +158,6 @@ void runAggregator(){
     wait(0);
     dup2(fileWStamp,1);
     execl("./ag","ag","0",NULL);
-    printf("AGREGADO\n");
     close(fileWStamp);
     close(vendasFile);
 }
@@ -236,7 +214,6 @@ void answerBack(char* pid,Answer ans){
     char buffer[100];
     sprintf(buffer,"%s%s",PATH,pid);
     fd2 = open(buffer,O_WRONLY);
-    printf("PID A QUEM ENVIA %s\n",pid);
     ssize_t res = write(fd2,ans,sizeof(struct answer));
     if(res == -1) perror("MENSAGEM");
     close(fd2);
@@ -334,8 +311,13 @@ void sv(){
                 priceUpdCache(cod,qnt); 
             } else if((res = fork()) == 0){ 
                 Answer ans = (Answer) malloc(sizeof(struct answer));
+                if(dados->pid > 0) {
+                    printf("Connection request from PID: %d\n", dados->pid);
+                }
                 if(dados->pid == -3) {
+                    printf("A correr o agregador\n");
                     runAggregator();
+                    printf("AGREGADO\n");
                 }else if(qnt == 0){ // consulta
                     lookStock(pid,cod,ans); 
                 }else if(qnt > 0){ // acrescentar ao stock
