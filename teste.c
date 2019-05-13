@@ -50,11 +50,11 @@ void testeMA() {
 }
 
 void testeAG() {
-    int fileDescriptor = open("1219",O_RDONLY);
-    AgregStruct sale;
-    while (read(fileDescriptor,&sale,sizeof(AgregStruct)) > 0)
+    int fileDescriptor = open("agregRes",O_RDONLY);
+    Sale sale;
+    while (read(fileDescriptor,&sale,sizeof(Sale)) > 0)
     { 
-        printf("ID:%d , QNT: %d, MONTANTE:%d\n",sale.ID,sale.qnt,sale.total);
+        printf("ID:%d , QNT: %d, MONTANTE:%d\n",sale.ID,sale.qnt,sale.price);
 
     }
     close(fileDescriptor);
@@ -93,10 +93,10 @@ void testeRead() {
 int main()
 {
     //testeRead();
-    testeMA();
+    //testeMA();
     //testeStock();
     //testeVendas();
-    //testeAG();
+    testeAG();
     return 0;
     
 }

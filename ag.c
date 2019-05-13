@@ -8,101 +8,78 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include "constants.h"
-// ESTRUTURA PARA GUARDAR POSICAO ONDE FICAMOS NO FICHEIRO VENDAS
-typedef struct _agregState {
-    off_t offset;
-} AgregState;
 
 
-void writeToFDAgreg(int fileDescriptor) {
-    AgregStruct tmp = {0,0,0};
-    int fd = open("agregRes",O_RDONLY);
-    while(read(fd,&tmp,sizeof(AgregStruct)) > 0) {
-        if(tmp.qnt <= 0 ) continue;
-        char tmpBuffFile[100];
-        sprintf(tmpBuffFile,"Codigo: %d, Quantidade: %d, Preço: %d\n",tmp.ID,tmp.qnt, tmp.total);
-        write(fileDescriptor,tmpBuffFile,strlen(tmpBuffFile));
+void agrega(int fileDescriptor) {
+    Sale sale = {0,0,0};
+    int fAgreg = open("agregRes",O_CREAT | O_RDWR , 0666);
+    while(read(fileDescriptor,&sale,sizeof(Sale)) > 0) {
+        Sale tmp = {0,0,0};
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        read(fAgreg,&tmp,sizeof(Sale));
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        tmp.ID = sale.ID;
+        tmp.qnt += sale.qnt;
+        tmp.price += (sale.price*sale.qnt);
+        write(fAgreg,&tmp,sizeof(Sale));
     }
-    close(fileDescriptor);
-    close(fd);
+    close(fAgreg);
 }
 
 
-
-off_t readPosicaoAgreg() {
-    int saveState = open(PATHAGREGSTATE,O_CREAT | O_RDWR,0666);
-    AgregState aS = {0};
-    read(saveState,&aS,sizeof(AgregState));
-    close(saveState);
-    return aS.offset;
+void writeToString() {
+    int fAgreg = open("agregRes",O_CREAT | O_RDWR , 0666);
+    Sale tmp = {0,0,0};
+    while(read(fAgreg,&tmp,sizeof(Sale)) > 0) {
+        if(tmp.qnt <= 0) continue;
+        char buffer[150] = "";
+        sprintf(buffer,"ID: %d , Quantidade : %d , Total: %d \n",tmp.ID,tmp.qnt,tmp.price);
+        write(1,buffer,strlen(buffer));
+    }
+    close(fAgreg);
 }
 
-void savePosicaoAgreg(off_t ot) {
-    int saveState = open(PATHAGREGSTATE,O_CREAT | O_RDWR,0666);
-    AgregState aS = {0};
-    read(saveState,&aS,sizeof(AgregState));
-    aS.offset = ot;
-    lseek(saveState,0,SEEK_SET);
-    write(saveState,&aS,sizeof(AgregState)); 
-    close(saveState);
+void agregaFicheiros() {
+    for(int i = 0;i<CONCURRENTAGG; i++) {
+        char buffer[3] = "";
+        sprintf(buffer,"%d",i);
+        int fd = open(buffer,O_RDWR);
+        agrega(fd);
+        close(fd);
+        remove(buffer);
+    }
+    writeToString();
 }
 
-off_t agregaEmIntervalo(int intervalo,off_t offset) {
-    /*char buffTmp[10];
-    sprintf(buffTmp,"%d",getpid()); */
-    int filePid = open("agregRes",O_CREAT | O_RDWR , 0666);
-    Sale sale;
-    int fd = open(PATHVENDAS,O_RDONLY);
-    if(lseek(fd,0,SEEK_END) == offset) return offset;
-    lseek(fd,offset,SEEK_SET);
-    while (read(fd,&sale,sizeof(Sale))>0 && intervalo > 0) {
-       AgregStruct tmp = {0,0,0};
-       lseek(filePid,sizeof(AgregStruct)*sale.ID,SEEK_SET);
-       read(filePid,&tmp,sizeof(AgregStruct));
-       tmp.ID = sale.ID;
-       tmp.qnt += sale.qnt;
-       tmp.total += (sale.qnt * sale.price);
-       lseek(filePid,sizeof(AgregStruct)*sale.ID,SEEK_SET);
-       write(filePid,&tmp,sizeof(AgregStruct));
-       intervalo--;
-    } 
-    close(filePid);
-    return (lseek(fd,0,SEEK_CUR));
+void agregaEmIntervalo(int intervalo,char* indName) {
+    Sale sale = {0,0,0};
+    int fAgreg = open(indName,O_CREAT | O_RDWR , 0666);
+    while(read(0,&sale,sizeof(Sale)) > 0 && intervalo > 0) {
+        Sale tmp = {0,0,0};
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        read(fAgreg,&tmp,sizeof(Sale));
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        tmp.ID = sale.ID;
+        tmp.qnt += sale.qnt;
+        tmp.price += (sale.price*sale.qnt);
+        write(fAgreg,&tmp,sizeof(Sale));
+        intervalo--;
+    }
+    close(fAgreg);
 }
 
-off_t agrega(off_t offset) {
-    /*char buffTmp[10];
-    sprintf(buffTmp,"%d",getpid()); */
-    int filePid = open("agregRes",O_CREAT | O_RDWR , 0666);
-    Sale sale;
-    int fd = open(PATHVENDAS,O_RDONLY);
-    off_t res = lseek(fd,0,SEEK_END);
-    if( res == offset) return offset;
-    lseek(fd,offset,SEEK_SET);
-    while (read(0,&sale,sizeof(Sale))>0) {
-       AgregStruct tmp = {0,0,0};
-       lseek(filePid,sizeof(AgregStruct)*sale.ID,SEEK_SET);
-       read(filePid,&tmp,sizeof(AgregStruct));
-       tmp.ID = sale.ID;
-       tmp.qnt += sale.qnt;
-       tmp.total += (sale.qnt * sale.price);
-       lseek(filePid,sizeof(AgregStruct)*sale.ID,SEEK_SET);
-       write(filePid,&tmp,sizeof(AgregStruct));
-    } 
-    close(filePid);
-    return (lseek(fd,0,SEEK_CUR));
-}
 
 
 int main(int argc, char**argv) {
-    off_t otread = readPosicaoAgreg();
     if(argc > 1) {
-        otread = agregaEmIntervalo(atoi(argv[1]),otread);
+        int res = atoi(argv[1]);
+        if(res == 0) {
+            agregaFicheiros();
+        } else
+        agregaEmIntervalo(res,argv[2]);
     } else {
-        otread = agrega(otread);
-    }
-    savePosicaoAgreg(otread);
-    writeToFDAgreg(1);
+        agrega(0);
+    }   
     return 0;
     
 }
