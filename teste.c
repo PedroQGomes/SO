@@ -49,8 +49,8 @@ void testeMA() {
     close(stringsFile);
 }
 
-void testeAG() {
-    int fileDescriptor = open("agregRes",O_RDONLY);
+void testeAG(char *fd) {
+    int fileDescriptor = open(fd,O_RDONLY);
     Sale sale;
     while (read(fileDescriptor,&sale,sizeof(Sale)) > 0)
     { 
@@ -95,8 +95,11 @@ int main()
     //testeRead();
     //testeMA();
     //testeStock();
-    //testeVendas();
-    testeAG();
+    testeVendas();
+    printf("\n");
+    testeAG("0");
+    printf("\n");
+    testeAG("1");
     return 0;
     
 }

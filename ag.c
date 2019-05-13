@@ -10,9 +10,9 @@
 #include "constants.h"
 
 
-void agrega(int fileDescriptor) {
+void agrega(int fileDescriptor,char *buffer) {
     Sale sale = {0,0,0};
-    int fAgreg = open("agregRes",O_CREAT | O_RDWR , 0666);
+    int fAgreg = open(buffer,O_CREAT | O_RDWR , 0666);
     while(read(fileDescriptor,&sale,sizeof(Sale)) > 0) {
         Sale tmp = {0,0,0};
         lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
@@ -20,15 +20,33 @@ void agrega(int fileDescriptor) {
         lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
         tmp.ID = sale.ID;
         tmp.qnt += sale.qnt;
-        tmp.price += (sale.price*sale.qnt);
+        tmp.price += sale.price;
         write(fAgreg,&tmp,sizeof(Sale));
     }
     close(fAgreg);
 }
 
 
-void writeToString() {
-    int fAgreg = open("agregRes",O_CREAT | O_RDWR , 0666);
+void agregaEmIntervalo(int intervalo,char* indName) {
+    Sale sale = {0,0,0};
+    int fAgreg = open(indName,O_CREAT | O_RDWR , 0666);
+    while(read(0,&sale,sizeof(Sale)) > 0 && intervalo > 0) {
+        Sale tmp = {0,0,0};
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        read(fAgreg,&tmp,sizeof(Sale));
+        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
+        tmp.ID = sale.ID;
+        tmp.qnt += sale.qnt;
+        tmp.price += sale.price;
+        write(fAgreg,&tmp,sizeof(Sale));
+        intervalo--;
+    }
+    close(fAgreg);
+}
+
+
+void writeToString(char *path) {
+    int fAgreg = open(path,O_CREAT | O_RDWR , 0666);
     Sale tmp = {0,0,0};
     while(read(fAgreg,&tmp,sizeof(Sale)) > 0) {
         if(tmp.qnt <= 0) continue;
@@ -44,29 +62,13 @@ void agregaFicheiros() {
         char buffer[3] = "";
         sprintf(buffer,"%d",i);
         int fd = open(buffer,O_RDWR);
-        agrega(fd);
+        agrega(fd,"agregRes");
         close(fd);
         remove(buffer);
     }
-    writeToString();
+    writeToString("agregRes");
 }
 
-void agregaEmIntervalo(int intervalo,char* indName) {
-    Sale sale = {0,0,0};
-    int fAgreg = open(indName,O_CREAT | O_RDWR , 0666);
-    while(read(0,&sale,sizeof(Sale)) > 0 && intervalo > 0) {
-        Sale tmp = {0,0,0};
-        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
-        read(fAgreg,&tmp,sizeof(Sale));
-        lseek(fAgreg,sale.ID*sizeof(Sale),SEEK_SET);
-        tmp.ID = sale.ID;
-        tmp.qnt += sale.qnt;
-        tmp.price += (sale.price*sale.qnt);
-        write(fAgreg,&tmp,sizeof(Sale));
-        intervalo--;
-    }
-    close(fAgreg);
-}
 
 
 
@@ -78,8 +80,8 @@ int main(int argc, char**argv) {
         } else
         agregaEmIntervalo(res,argv[2]);
     } else {
-        agrega(0);
+        agrega(0,"agregBash");
+        writeToString("agregBash");
     }   
     return 0;
-    
 }

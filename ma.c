@@ -112,8 +112,8 @@ void alteraPrecoArtigo(int id, int _price)
 }
 
 int initFileDescriptors() {
-    artigosFile = open(PATHARTIGOS, O_RDWR);
-    stringsFile = open(PATHTSTRINGS, O_RDWR);
+    artigosFile = open(PATHARTIGOS,O_CREAT | O_RDWR, 0666);
+    stringsFile = open(PATHTSTRINGS,O_CREAT | O_RDWR,0666);
     if (artigosFile <= 0 || stringsFile <= 0)
     {
         perror("File Not Found");

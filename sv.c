@@ -12,6 +12,10 @@
 
 PCache arr[CACHE_SIZE];
 
+typedef struct state{
+    off_t offset;
+}State;
+
 void inthandler(){
     remove(serverPipe);
     _exit(0);
@@ -34,7 +38,7 @@ int getPriceCache(int codigo,int *preco){ // retorna -1 se o codigo nao está na
 
 int getPriceFile(int codigo,int *preco){ // retorna -1 se o artigo nao existe, 0 se tudo bem
     int fd1,tmp = (-1);
-    fd1 = open(PATHARTIGOS,O_RDONLY);
+    fd1 = open(PATHARTIGOS,O_CREAT | O_RDONLY,0666);
     if(fd1 <= 0 ) perror("ERRO AO ABRIR ARTIGOS");
     Artigo *atg = malloc(sizeof(Artigo));
     lseek(fd1,codigo * sizeof(Artigo),SEEK_SET);
@@ -50,7 +54,7 @@ int getPriceFile(int codigo,int *preco){ // retorna -1 se o artigo nao existe, 0
 // incrementa o nuemro de acessos de uma artigo
 int atualizaFileCache(int codigo,int *preco){
     int fd1;
-    fd1 = open(PATHFCACHE,O_RDWR);
+    fd1 = open(PATHFCACHE,O_CREAT | O_RDWR,0666);
     File c;
     lseek(fd1,codigo *(sizeof (struct file)),SEEK_SET);
     read(fd1,&c,sizeof(struct file));
@@ -131,31 +135,65 @@ char* getTimeStamp() {
     return strdup(timeStampStr);
 }
 
-int calculateFileSales(int vendasFile) {
+int calculateFileSales(int vendasFile,off_t currentPosition) {
     off_t end = lseek(vendasFile,0,SEEK_END);
     lseek(vendasFile,0,SEEK_SET);
-    return (end/sizeof(Sale));
+    return ((end-currentPosition)/sizeof(Sale));
+}
+
+off_t readAgPosition() {
+    State state = {0};
+    int fd = open("agPosition",O_CREAT | O_RDWR,0666);
+    read(fd,&state,sizeof(State));
+    close(fd);
+    return state.offset;
+}
+
+void saveAgPosition() {
+    int vendasFile = open(PATHVENDAS,O_CREAT | O_RDONLY,0666);
+    State state = {0};
+    int fd = open("agPosition",O_CREAT | O_RDWR,0666);
+    read(fd,&state,sizeof(State));
+    state.offset += lseek(vendasFile,0,SEEK_END);
+    lseek(fd,0,SEEK_SET);
+    write(fd,&state,sizeof(State));
+    close(vendasFile);
+    close(fd);
 }
 
 
 void runAggregator(){
-    int vendasFile = open(PATHVENDAS,O_RDONLY);
+    off_t currentOff = readAgPosition();
+    int vendasFile = open(PATHVENDAS,O_CREAT | O_RDONLY,0666);
     int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
-    int res = calculateFileSales(vendasFile)/CONCURRENTAGG;
-    dup2(vendasFile,0);
+    int nsales =calculateFileSales(vendasFile,currentOff);
+    int res = nsales/CONCURRENTAGG;
+    if(currentOff == lseek(vendasFile,0,SEEK_END)) return;
+    lseek(vendasFile,currentOff,SEEK_SET);
     for(int i = 0; i<CONCURRENTAGG; i++) {
-        //lseek(0,(res*i)*sizeof(Sale),SEEK_SET);
+        off_t tmp = currentOff+((i*res)*sizeof(Sale));
         if(fork() == 0) {
+            int _vendasFile = open(PATHVENDAS,O_CREAT | O_RDONLY,0666);
+            lseek(_vendasFile,tmp,SEEK_SET);
+            dup2(_vendasFile,0);
             char buffer[3] = "";
             sprintf(buffer,"%d",i);
-            char numSalesPerProcess[10];
-            sprintf(numSalesPerProcess,"%d",res);
+            char numSalesPerProcess[10] = "";
+            if(i == CONCURRENTAGG-1) {
+                int range = nsales-(i * res);
+                sprintf(numSalesPerProcess,"%d",range);
+            } else sprintf(numSalesPerProcess,"%d",res);
             execl("./ag","ag",numSalesPerProcess,buffer,NULL);
-            _exit(0);
+            _exit(2);
         } 
         
     }
-    wait(0);
+    
+    for(int i = 0; i< CONCURRENTAGG;i++) {
+        wait(NULL);
+    } 
+
+    saveAgPosition();
     dup2(fileWStamp,1);
     execl("./ag","ag","0",NULL);
     close(fileWStamp);
@@ -166,7 +204,7 @@ void runAggregator(){
 void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
     int fd1;
     Stocks stk = {0,0};
-    fd1 = open(PATHSTOCKS,O_RDONLY);
+    fd1 = open(PATHSTOCKS,O_CREAT | O_RDONLY,0666);
     lseek(fd1,codigo*sizeof(Stocks),SEEK_SET);
     read(fd1,&stk,sizeof(Stocks));
     if (stk.numCod == codigo) {
@@ -180,7 +218,7 @@ void getStock(int codigo,int *stock){ //POSSIVEL RETORNO DA ESTRUTURA STOCK
 int atualizaStock(int codigo, int quantidade) { // retorna o stock resultante
     int fd1;
     Stocks stk = {0,0};
-    fd1 = open(PATHSTOCKS,O_RDWR);
+    fd1 = open(PATHSTOCKS,O_CREAT | O_RDWR,0666);
     if(fd1 <= 0) perror("A Atualizar o stock");
     lseek(fd1,sizeof(Stocks)*codigo,SEEK_SET);
     read(fd1,&stk,sizeof(Stocks));
@@ -201,7 +239,7 @@ void atualizaVenda(int codigo,int quantidade){ // done mas por testar
     venda.price = abs(quantidade) * preco;
     venda.ID = codigo;
     venda.qnt = abs(quantidade);
-    fd1 = open(PATHVENDAS,O_WRONLY);
+    fd1 = open(PATHVENDAS,O_CREAT | O_WRONLY,0666);
     lseek(fd1,0,SEEK_END);
     write(fd1,&venda,sizeof(Sale));
     close(fd1);
@@ -213,7 +251,7 @@ void answerBack(char* pid,Answer ans){
     int fd2;
     char buffer[100];
     sprintf(buffer,"%s%s",PATH,pid);
-    fd2 = open(buffer,O_WRONLY);
+    fd2 = open(buffer,O_CREAT | O_WRONLY,0666);
     ssize_t res = write(fd2,ans,sizeof(struct answer));
     if(res == -1) perror("MENSAGEM");
     close(fd2);
