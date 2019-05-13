@@ -143,23 +143,38 @@ char* getTimeStamp() {
     close(vendasFile);
     }
  */
+
+
+int calculateFileSales(int vendasFile) {
+    off_t end = lseek(vendasFile,0,SEEK_END);
+    lseek(vendasFile,0,SEEK_SET);
+    return (end/sizeof(Sale));
+}
+
+
+
 void runAggregator(){
     int vendasFile = open(PATHVENDAS,O_RDONLY);
     int fileWStamp = open(getTimeStamp(),O_CREAT | O_RDWR,0666);
+    int res = calculateFileSales(vendasFile)/CONCURRENTAGG;
+    printf("RES:%d\n",res);
     dup2(vendasFile,0);
     for(int i = 0; i<CONCURRENTAGG; i++) {
-        lseek(0,i*sizeof(AgregStruct),SEEK_SET);
+        //lseek(0,(res*i)*sizeof(Sale),SEEK_SET);
         if(fork() == 0) {
-            /*char buffer[3];
+            char buffer[3] = "";
             sprintf(buffer,"%d",i);
-            int fd = open(buffer,O_CREAT | O_RDWR, 0666); */
-            dup2(fileWStamp,1);
-            execl("./ag","ag","1");
-            //close(fd);
+            char numSalesPerProcess[10];
+            sprintf(numSalesPerProcess,"%d",res);
+            execl("./ag","ag",numSalesPerProcess,buffer,NULL);
             _exit(0);
-        }
+        } 
+        
     }
-     
+    wait(0);
+    dup2(fileWStamp,1);
+    execl("./ag","ag","0",NULL);
+    printf("AGREGADO\n");
     close(fileWStamp);
     close(vendasFile);
 }
